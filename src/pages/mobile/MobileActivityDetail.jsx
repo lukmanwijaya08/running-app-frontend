@@ -1,24 +1,129 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+// Fungsi perhitungan jarak pembantu
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; 
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
+};
+
+// Formatting Time helper
+const formatTimeStr = (totalSeconds) => {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  if (h > 0) return `${h < 10 ? '0'+h : h}:${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+  return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+};
+
+const formatPaceFromSec = (secondsPerKm) => {
+  if(!isFinite(secondsPerKm) || secondsPerKm === 0) return "00:00";
+  const m = Math.floor(secondsPerKm / 60);
+  const s = Math.floor(secondsPerKm % 60);
+  return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+};
 
 const MobileActivityDetail = () => {
   const navigate = useNavigate();
+  const { id } = useParams(); // Mengambil ID dari URL
+  
+  const [activity, setActivity] = useState(null);
+  const [splitData, setSplitData] = useState([]);
+  const [chartData, setChartData] = useState([]);
+  const [maxElevation, setMaxElevation] = useState(0);
+  const [fastestPace, setFastestPace] = useState(9999);
 
-  const activity = { title: 'Morning Run Semarang', date: 'Jumat, 24 Juli 2026 • 06:15 WIB', distance: '5.20 km', movingTime: '32:30', avgPace: '06:15', maxElevation: '45 m' };
-  
-  // Data split dengan Elevasi
-  const splitData = Array.from({ length: 12 }, (_, i) => ({
-    km: i + 1,
-    pace: `06:${(30 - i) < 10 ? '0' : ''}${Math.max(15, 30 - i)}`,
-    paceSec: Math.max(375, 390 - (i * 5)),
-    elevation: Math.floor(Math.random() * 15) - 5 // Random elevasi -5 s/d +10
-  }));
-  
-  const chartData = [ { km: '1', pace: 390, elevation: 15 }, { km: '2', pace: 380, elevation: 27 }, { km: '3', pace: 345, elevation: 35 }, { km: '4', pace: 365, elevation: 30 }, { km: '5', pace: 370, elevation: 40 } ];
-  const formatPace = (seconds) => { const m = Math.floor(seconds / 60); const s = seconds % 60; return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`; };
-  const fastestPaceSec = Math.min(...splitData.map(s => s.paceSec));
+  useEffect(() => {
+    // 1. Ambil data dari Local Storage
+    const savedRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
+    const runData = savedRuns.find(r => r.id === id);
+
+    if (runData) {
+      setActivity(runData);
+      calculateAnalytics(runData.positions);
+    }
+  }, [id]);
+
+  // 2. Mesin Kalkulasi Analitik
+  const calculateAnalytics = (positions) => {
+    if (!positions || positions.length < 2) return;
+
+    let splits = [];
+    let charts = [];
+    let runningDist = 0;
+    let currentKmTarget = 1;
+    let splitStartIndex = 0;
+    let highestElev = -9999;
+    let bestPace = 9999;
+
+    // Iterasi setiap titik koordinat yang terekam
+    for (let i = 1; i < positions.length; i++) {
+      const prev = positions[i-1];
+      const curr = positions[i];
+      
+      const d = getDistance(prev.lat, prev.lon, curr.lat, curr.lon);
+      runningDist += d;
+
+      // Catat ketinggian tertinggi
+      if(curr.alt > highestElev) highestElev = curr.alt;
+
+      // Tambahkan titik data untuk grafik (Downsampling tiap 50 meter agar grafik tidak terlalu padat)
+      if (charts.length === 0 || runningDist - charts[charts.length-1].km >= 0.05) {
+        charts.push({
+          km: runningDist,
+          elevation: Math.round(curr.alt),
+        });
+      }
+
+      // Potong Split jika menyentuh 1 km penuh atau mencapai titik data terakhir
+      if (runningDist >= currentKmTarget || i === positions.length - 1) {
+        const splitStartPos = positions[splitStartIndex];
+        const splitEndPos = positions[i];
+        
+        // Kalkulasi waktu dalam detik berdasarkan Timestamp perangkat
+        const durationMs = splitEndPos.time - splitStartPos.time;
+        const durationSec = durationMs / 1000;
+        
+        // Kalkulasi jarak sebenarnya dalam split ini (bisa sedikit di atas 1 km, misal 1.02 km)
+        let actualSplitDist = 0;
+        for(let j = splitStartIndex + 1; j <= i; j++) {
+            actualSplitDist += getDistance(positions[j-1].lat, positions[j-1].lon, positions[j].lat, positions[j].lon);
+        }
+
+        const paceSecPerKm = actualSplitDist > 0 ? durationSec / actualSplitDist : 0;
+        if(paceSecPerKm > 0 && paceSecPerKm < bestPace) bestPace = paceSecPerKm;
+
+        const elevChange = Math.round((splitEndPos.alt || 0) - (splitStartPos.alt || 0));
+
+        splits.push({
+          km: currentKmTarget,
+          paceSec: paceSecPerKm,
+          paceStr: formatPaceFromSec(paceSecPerKm),
+          elevationChange: elevChange
+        });
+
+        currentKmTarget++;
+        splitStartIndex = i;
+      }
+    }
+
+    setSplitData(splits);
+    setChartData(charts);
+    setMaxElevation(Math.round(highestElev));
+    setFastestPace(bestPace);
+  };
+
+  if (!activity) {
+    return <div className="min-h-screen flex items-center justify-center text-slate-500">Data lari tidak ditemukan.</div>;
+  }
+
+  // Format Tanggal
+  const displayDate = new Date(activity.date).toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB';
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
@@ -30,29 +135,28 @@ const MobileActivityDetail = () => {
       </div>
 
       <div className="max-w-md mx-auto pt-16">
-        
         <div className="w-full h-64 bg-slate-200 relative overflow-hidden flex flex-col items-center justify-end pb-6 rounded-b-[2.5rem] shadow-sm">
           <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
           <svg className="absolute w-full h-full opacity-70" viewBox="0 0 100 100" preserveAspectRatio="none">
             <path d="M 10 80 Q 25 30, 50 60 T 90 40" fill="transparent" stroke="#9333ea" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           <div className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-full shadow-sm text-xs font-semibold text-slate-700 z-10 flex items-center gap-1.5">
-            <MapPin size={14} className="text-purple-600"/> Peta Rute GPX
+            <MapPin size={14} className="text-purple-600"/> Peta Rute Terekam
           </div>
         </div>
 
         <div className="px-5 py-6">
           <h2 className="text-2xl font-semibold text-slate-800 mb-1 tracking-tight">{activity.title}</h2>
-          <p className="text-xs font-medium text-slate-400 mb-6">{activity.date}</p>
+          <p className="text-xs font-medium text-slate-400 mb-6">{displayDate}</p>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
               <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Route size={12}/> Jarak</p>
-              <p className="text-xl font-semibold text-slate-800 tracking-tight">{activity.distance}</p>
+              <p className="text-xl font-semibold text-slate-800 tracking-tight">{activity.distance.toFixed(2)} km</p>
             </div>
             <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
-              <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Clock size={12}/> Waktu</p>
-              <p className="text-xl font-semibold text-slate-800 tracking-tight">{activity.movingTime}</p>
+              <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Clock size={12}/> Waktu Bergerak</p>
+              <p className="text-xl font-semibold text-slate-800 tracking-tight">{formatTimeStr(activity.movingTime)}</p>
             </div>
             <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
               <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Zap size={12}/> Pace Rata-rata</p>
@@ -60,42 +164,39 @@ const MobileActivityDetail = () => {
             </div>
             <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
               <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><TrendingUp size={12}/> Elevasi Maks</p>
-              <p className="text-xl font-semibold text-slate-800 tracking-tight">{activity.maxElevation}</p>
+              <p className="text-xl font-semibold text-slate-800 tracking-tight">{maxElevation > -9000 ? maxElevation : 0} m</p>
             </div>
           </div>
         </div>
 
         <div className="px-5 space-y-4">
-          
-          {/* Split Table (Memanjang ke bawah, tanpa scroll) */}
+          {/* Split Table Terkalkulasi Otomatis */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-50">
             <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
               <Activity size={16} className="text-purple-600"/> Split Kilometer
             </h3>
             
-            {/* Header dengan tambahan Elv */}
             <div className="flex text-left text-slate-400 text-[10px] uppercase tracking-wider border-b border-slate-100 pb-2 mb-2">
               <div className="w-8 font-semibold">KM</div>
               <div className="w-12 font-semibold">Pace</div>
               <div className="flex-1"></div>
-              <div className="w-10 font-semibold text-right">Elv</div>
+              <div className="w-12 font-semibold text-right">Elv (+/-)</div>
             </div>
             
-            {/* Isi Tabel */}
             <div className="space-y-1">
               {splitData.map((split, idx) => {
-                const isFastest = split.paceSec === fastestPaceSec;
+                const isFastest = split.paceSec === fastestPace && splitData.length > 1;
                 return (
                   <div key={idx} className="flex items-center py-2 border-b border-slate-50 last:border-0">
                     <div className="w-8 font-medium text-sm text-slate-700">{split.km}</div>
-                    <div className={`w-12 font-semibold text-sm ${isFastest ? 'text-purple-600' : 'text-slate-600'}`}>{split.pace}</div>
+                    <div className={`w-12 font-semibold text-sm ${isFastest ? 'text-purple-600' : 'text-slate-600'}`}>{split.paceStr}</div>
                     <div className="flex-1 px-2">
                       <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${isFastest ? 'bg-purple-500' : 'bg-slate-300'}`} style={{ width: `${(fastestPaceSec / split.paceSec) * 100}%` }}></div>
+                        <div className={`h-full rounded-full ${isFastest ? 'bg-purple-500' : 'bg-slate-300'}`} style={{ width: `${(fastestPace / split.paceSec) * 100}%` }}></div>
                       </div>
                     </div>
-                    <div className="w-10 font-medium text-xs text-slate-500 text-right">
-                      {split.elevation > 0 ? `+${split.elevation}` : split.elevation}m
+                    <div className="w-12 font-medium text-xs text-slate-500 text-right">
+                      {split.elevationChange > 0 ? `+${split.elevationChange}` : split.elevationChange}m
                     </div>
                   </div>
                 );
@@ -103,42 +204,27 @@ const MobileActivityDetail = () => {
             </div>
           </div>
 
-          {/* Sisa chart Pace, Elevasi, dan Catatan AI tetap sama seperti sebelumnya... */}
+          {/* Grafik Elevasi Dinamis */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-50">
-            <h3 className="text-sm font-semibold text-slate-800 mb-6">Analisis Pace</h3>
-            <div className="h-40 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
-                  <XAxis dataKey="km" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'Poppins' }} dy={10} />
-                  <YAxis reversed={true} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'Poppins' }} tickFormatter={formatPace} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontSize: '12px', fontFamily: 'Poppins', fontWeight: 600 }} formatter={(value) => [formatPace(value), 'Pace']} />
-                  <Line type="monotone" dataKey="pace" stroke="#a855f7" strokeWidth={3} dot={{ r: 3, fill: '#a855f7', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 5 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-50">
-            <h3 className="text-sm font-semibold text-slate-800 mb-6 flex items-center gap-2"><TrendingUp size={16} className="text-orange-400"/> Elevasi</h3>
+            <h3 className="text-sm font-semibold text-slate-800 mb-6 flex items-center gap-2"><TrendingUp size={16} className="text-orange-400"/> Grafik Ketinggian</h3>
             <div className="h-32 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorElevation" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#fb923c" stopOpacity={0.3}/><stop offset="95%" stopColor="#fb923c" stopOpacity={0}/></linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
-                  <XAxis dataKey="km" hide />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'Poppins' }} />
-                  <Area type="monotone" dataKey="elevation" stroke="#fb923c" strokeWidth={2} fillOpacity={1} fill="url(#colorElevation)" />
-                </AreaChart>
-              </ResponsiveContainer>
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorElevation" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#fb923c" stopOpacity={0.4}/><stop offset="95%" stopColor="#fb923c" stopOpacity={0}/></linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
+                    <XAxis dataKey="km" hide />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'Poppins' }} />
+                    <Area type="monotone" dataKey="elevation" stroke="#fb923c" strokeWidth={2} fillOpacity={1} fill="url(#colorElevation)" />
+                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '12px' }} formatter={(value) => [`${value}m`, 'Elevasi']} labelFormatter={(label) => `Jarak: ${Number(label).toFixed(2)} km`} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">Data kurang untuk grafik.</div>
+              )}
             </div>
-          </div>
-
-          <div className="bg-slate-100 rounded-3xl p-5 border border-slate-200 mt-4">
-            <div className="flex items-center gap-2 mb-3"><Activity size={16} className="text-slate-700" /><h3 className="font-semibold text-slate-800 text-sm">Catatan Pelatih (AI)</h3></div>
-            <p className="text-xs text-slate-600 leading-relaxed font-medium">Lari yang sangat konsisten! Anda berhasil mempertahankan pace di bawah 06:15/km di 3 km terakhir. Stamina kardio Anda sangat prima.</p>
           </div>
 
         </div>

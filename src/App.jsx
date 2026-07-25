@@ -9,6 +9,9 @@ import MobileAddActivity from './pages/mobile/MobileAddActivity';
 import MobileActivity from './pages/mobile/MobileActivity'; 
 import MobileAuth from './pages/mobile/MobileAuth';
 
+// Import halaman Record Run yang baru dibuat
+import MobileRecordRun from './pages/mobile/MobileRecordRun'; 
+
 function App() {
   return (
     <Router>
@@ -18,15 +21,21 @@ function App() {
         <Route path="/register" element={<MobileAuth />} />
 
         {/* --- Mobile (User) Routes --- */}
+        {/* Rute yang menggunakan Bottom Navigation */}
         <Route path="/mobile" element={<MobileLayout />}>
           <Route index element={<MobileHome />} />
           <Route path="activities" element={<MobileActivity />} />
           <Route path="profile" element={<MobileProfile />} />
         </Route>
 
+        {/* Rute Standalone (Layar Penuh tanpa Bottom Navigation) */}
         <Route path="/mobile/activity/:id" element={<MobileActivityDetail />} />
         <Route path="/mobile/add-activity" element={<MobileAddActivity />} />
-
+        
+        {/* Rute baru untuk fitur Live Tracking / Rekam Lari */}
+        <Route path="/mobile/record-run" element={<MobileRecordRun />} />
+        
+        {/* Redirect default ke halaman mobile */}
         <Route path="/" element={<Navigate to="/mobile" replace />} />
       </Routes>
     </Router>

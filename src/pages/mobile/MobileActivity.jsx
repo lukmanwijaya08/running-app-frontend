@@ -6,9 +6,17 @@ const MobileActivity = () => {
   const navigate = useNavigate();
   const [filterDate, setFilterDate] = useState('');
   
-  // State untuk Modal Edit
+  // State untuk Modal Edit diperbarui dengan field tambahan
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editData, setEditData] = useState({ id: null, title: '', distance: '', time: '' });
+  const [editData, setEditData] = useState({ 
+    id: null, 
+    title: '', 
+    description: '',
+    date: '',
+    distance: '', 
+    pace: '',
+    time: '' 
+  });
 
   // Data Dummy Aktivitas
   const [activities, setActivities] = useState([
@@ -30,15 +38,40 @@ const MobileActivity = () => {
     }
   };
 
-  // Fungsi Buka Modal Edit
+  // Fungsi Buka Modal Edit diperbarui untuk memuat data baru
   const openEditModal = (activity) => {
-    setEditData({ id: activity.id, title: activity.title, distance: activity.distance.replace(' km',''), time: activity.time });
+    setEditData({ 
+      id: activity.id, 
+      title: activity.title, 
+      description: activity.description,
+      date: activity.date,
+      distance: activity.distance.replace(' km',''), 
+      pace: activity.pace,
+      time: activity.time 
+    });
     setIsEditModalOpen(true);
   };
 
+  // Fungsi Simpan Edit diperbarui untuk memproses data baru
   const handleEditSave = (e) => {
     e.preventDefault();
-    setActivities(activities.map(a => a.id === editData.id ? { ...a, title: editData.title, distance: `${editData.distance} km`, time: editData.time } : a));
+    
+    // Format ulang displayDate (contoh sederhana ambil format DD MMM dari date)
+    const dateObj = new Date(editData.date);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+    const formattedDisplayDate = `${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
+
+    setActivities(activities.map(a => a.id === editData.id ? { 
+      ...a, 
+      title: editData.title, 
+      description: editData.description,
+      date: editData.date,
+      displayDate: isNaN(dateObj.getTime()) ? a.displayDate : formattedDisplayDate,
+      distance: `${editData.distance} km`, 
+      pace: editData.pace,
+      time: editData.time 
+    } : a));
+    
     setIsEditModalOpen(false);
     alert('Data berhasil diperbarui!');
   };
@@ -106,19 +139,31 @@ const MobileActivity = () => {
         )}
       </div>
 
-      {/* MODAL POP UP EDIT */}
+      {/* MODAL POP UP EDIT DIPERBARUI */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end justify-center sm:items-center">
-          <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl transform transition-transform animate-in slide-in-from-bottom-full">
+          <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl transform transition-transform animate-in slide-in-from-bottom-full max-h-[90vh] overflow-y-auto hide-scrollbar">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-semibold text-slate-800">Edit Aktivitas</h2>
               <button onClick={() => setIsEditModalOpen(false)} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500"><X size={18}/></button>
             </div>
             <form onSubmit={handleEditSave} className="space-y-4">
+              
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-500 ml-1">Judul Aktivitas</label>
                 <input type="text" value={editData.title} onChange={(e) => setEditData({...editData, title: e.target.value})} className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
               </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-500 ml-1">Deskripsi</label>
+                <input type="text" value={editData.description} onChange={(e) => setEditData({...editData, description: e.target.value})} className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-500 ml-1">Tanggal</label>
+                <input type="date" value={editData.date} onChange={(e) => setEditData({...editData, date: e.target.value})} className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-slate-500 ml-1">Jarak (km)</label>
@@ -126,9 +171,15 @@ const MobileActivity = () => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-slate-500 ml-1">Waktu</label>
-                  <input type="text" value={editData.time} onChange={(e) => setEditData({...editData, time: e.target.value})} className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
+                  <input type="text" value={editData.time} onChange={(e) => setEditData({...editData, time: e.target.value})} placeholder="00:00:00" className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
                 </div>
               </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-500 ml-1">Pace Rata-rata</label>
+                <input type="text" value={editData.pace} onChange={(e) => setEditData({...editData, pace: e.target.value})} placeholder="00:00" className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
+              </div>
+
               <button type="submit" className="w-full bg-purple-600 text-white font-medium text-base py-4 rounded-full shadow-md mt-4">Simpan Perubahan</button>
             </form>
           </div>

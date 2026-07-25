@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Home, ActivitySquare, User } from 'lucide-react';
+import { Home, ActivitySquare, User, PlayCircle } from 'lucide-react';
 
 const MobileLayout = () => {
   const location = useLocation();
@@ -8,6 +8,7 @@ const MobileLayout = () => {
   const navItems = [
     { name: 'Home', path: '/mobile', icon: <Home size={24} /> },
     { name: 'Aktivitas', path: '/mobile/activities', icon: <ActivitySquare size={24} /> },
+    { name: 'Rekam', path: '/mobile/record-run', icon: <PlayCircle size={24} /> },
     { name: 'Profil', path: '/mobile/profile', icon: <User size={24} /> },
   ];
 

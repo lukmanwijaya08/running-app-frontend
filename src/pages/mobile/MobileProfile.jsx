@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Scale, Ruler, Target, LogOut, Route, Camera, Settings, Key, Mail, X } from 'lucide-react';
+import axios from '../../utils/axios'; // Pastikan path ini sesuai dengan struktur foldermu
 
 const MobileProfile = () => {
   const navigate = useNavigate();
@@ -11,21 +12,90 @@ const MobileProfile = () => {
   
   // State Pengaturan Akun
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [accountData, setAccountData] = useState({ email: 'lukman@runapp.com', password: '' });
+  const [isLoading, setIsLoading] = useState(false);
+  const [accountData, setAccountData] = useState({ 
+    email: 'lukman@runapp.com', 
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  // (Opsional) Mengambil data email terbaru dari backend saat komponen dimuat
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await axios.get('/user');
+        setAccountData(prev => ({ ...prev, email: response.data.email }));
+        setFormData(prev => ({ ...prev, name: response.data.name }));
+      } catch (error) {
+        console.error("Gagal mengambil data user:", error);
+      }
+    };
+    fetchUser();
+  }, []);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
   const handlePhotoChange = (e) => { if (e.target.files[0]) setPhoto(URL.createObjectURL(e.target.files[0])); };
-  const handleSave = (e) => { e.preventDefault(); alert('Profil berhasil disimpan!'); };
-
-  // Fungsi Logout
-  const handleLogout = () => {
-    if(window.confirm('Yakin ingin keluar?')) navigate('/login');
+  
+  const handleSave = (e) => { 
+    e.preventDefault(); 
+    // Logika simpan profil fisik bisa ditambahkan ke Axios di sini
+    alert('Profil fisik berhasil disimpan!'); 
   };
 
-  const handleAccountSave = (e) => {
+  const handleLogout = async () => {
+    if(window.confirm('Yakin ingin keluar?')) {
+      try {
+        await axios.post('/logout');
+        navigate('/login');
+      } catch (error) {
+        navigate('/login'); // Tetap redirect meski API gagal
+      }
+    }
+  };
+
+  const handleAccountSave = async (e) => {
     e.preventDefault();
-    setIsSettingsOpen(false);
-    alert('Email / Password berhasil diperbarui!');
+    
+    // Validasi Password Baru
+    if (accountData.newPassword && accountData.newPassword !== accountData.confirmPassword) {
+      alert('Konfirmasi password baru tidak cocok!');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const payload = {
+        email: accountData.email,
+      };
+
+      // Hanya kirim password jika pengguna mengisi input password
+      if (accountData.newPassword) {
+        payload.current_password = accountData.currentPassword;
+        payload.password = accountData.newPassword;
+        payload.password_confirmation = accountData.confirmPassword;
+      }
+
+      // Sesuaikan URL endpoint dengan route di backend Laravel (misal: /profile)
+      await axios.put('/profile', payload);
+      
+      alert('Email dan Password berhasil diperbarui!');
+      setIsSettingsOpen(false);
+      
+      // Kosongkan form password setelah berhasil
+      setAccountData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }));
+
+    } catch (error) {
+      alert(error.response?.data?.message || 'Terjadi kesalahan saat memperbarui akun.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -102,7 +172,7 @@ const MobileProfile = () => {
         </div>
       </form>
 
-      {/* Modal Pengaturan Akun */}
+      {/* Modal Pengaturan Akun Terintegrasi */}
       {isSettingsOpen && (
         <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end justify-center sm:items-center">
           <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl transform transition-transform animate-in slide-in-from-bottom-full">
@@ -110,22 +180,40 @@ const MobileProfile = () => {
               <h2 className="text-lg font-semibold text-slate-800">Pengaturan Akun</h2>
               <button onClick={() => setIsSettingsOpen(false)} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500"><X size={18}/></button>
             </div>
+            
             <form onSubmit={handleAccountSave} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-500 ml-1">Ubah Email</label>
-                <div className="bg-slate-50 rounded-xl flex items-center gap-3 px-3">
+                <label className="text-xs font-medium text-slate-500 ml-1">Email</label>
+                <div className="bg-slate-50 rounded-xl flex items-center gap-3 px-3 border border-slate-100">
                   <Mail size={16} className="text-slate-400" />
                   <input type="email" value={accountData.email} onChange={(e) => setAccountData({...accountData, email: e.target.value})} className="w-full bg-transparent py-3.5 outline-none font-medium text-sm text-slate-800" required />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-500 ml-1">Password Baru (Opsional)</label>
-                <div className="bg-slate-50 rounded-xl flex items-center gap-3 px-3">
-                  <Key size={16} className="text-slate-400" />
-                  <input type="password" placeholder="Kosongkan jika tidak diubah" value={accountData.password} onChange={(e) => setAccountData({...accountData, password: e.target.value})} className="w-full bg-transparent py-3.5 outline-none font-medium text-sm text-slate-800" />
+
+              <div className="border-t border-slate-100 pt-3 mt-2">
+                <p className="text-[10px] text-slate-400 font-medium mb-3 ml-1">Kosongkan jika tidak ingin mengubah password</p>
+                
+                <div className="space-y-3">
+                  <div className="bg-slate-50 rounded-xl flex items-center gap-3 px-3 border border-slate-100">
+                    <Key size={16} className="text-slate-400" />
+                    <input type="password" placeholder="Password Saat Ini" value={accountData.currentPassword} onChange={(e) => setAccountData({...accountData, currentPassword: e.target.value})} className="w-full bg-transparent py-3.5 outline-none font-medium text-sm text-slate-800" />
+                  </div>
+
+                  <div className="bg-slate-50 rounded-xl flex items-center gap-3 px-3 border border-slate-100">
+                    <Key size={16} className="text-slate-400" />
+                    <input type="password" placeholder="Password Baru" value={accountData.newPassword} onChange={(e) => setAccountData({...accountData, newPassword: e.target.value})} className="w-full bg-transparent py-3.5 outline-none font-medium text-sm text-slate-800" />
+                  </div>
+
+                  <div className="bg-slate-50 rounded-xl flex items-center gap-3 px-3 border border-slate-100">
+                    <Key size={16} className="text-slate-400" />
+                    <input type="password" placeholder="Konfirmasi Password Baru" value={accountData.confirmPassword} onChange={(e) => setAccountData({...accountData, confirmPassword: e.target.value})} className="w-full bg-transparent py-3.5 outline-none font-medium text-sm text-slate-800" />
+                  </div>
                 </div>
               </div>
-              <button type="submit" className="w-full bg-purple-600 text-white font-medium text-base py-4 rounded-full shadow-md mt-4">Update Akun</button>
+
+              <button type="submit" disabled={isLoading} className={`w-full text-white font-medium text-base py-4 rounded-full shadow-md mt-4 transition-colors ${isLoading ? 'bg-purple-400' : 'bg-purple-600 active:scale-[0.98]'}`}>
+                {isLoading ? 'Menyimpan...' : 'Update Akun'}
+              </button>
             </form>
           </div>
         </div>
