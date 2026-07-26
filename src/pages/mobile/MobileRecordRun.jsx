@@ -48,10 +48,41 @@ const MobileRecordRun = () => {
   
   const [distance, setDistance] = useState(0); 
   const [duration, setDuration] = useState(0); 
+  const [currentPace, setCurrentPace] = useState(0); // Detik per km (Real-time)
   const [errorMessage, setErrorMessage] = useState('');
   
   const watchIdRef = useRef(null);
   const timerRef = useRef(null);
+  const wakeLockRef = useRef(null); // Ref untuk Wake Lock API
+
+  // Fungsi untuk meminta Screen Wake Lock (Layar Anti Mati)
+  const requestWakeLock = async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+      }
+    } catch (err) {
+      console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+    }
+  };
+
+  const releaseWakeLock = () => {
+    if (wakeLockRef.current !== null) {
+      wakeLockRef.current.release();
+      wakeLockRef.current = null;
+    }
+  };
+
+  // Pantau visibilitas dokumen untuk me-request ulang Wake Lock jika tab aktif kembali
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isRecording && !isPaused) {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isRecording, isPaused]);
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -76,6 +107,28 @@ const MobileRecordRun = () => {
     return () => clearInterval(timerRef.current);
   }, [isRecording, isPaused]);
 
+  // Efek untuk menghitung Current Pace (Kecepatan Real-time saat ini)
+  useEffect(() => {
+    if (positions.length >= 2 && !isPaused) {
+      const last = positions[positions.length - 1];
+      const prev = positions[positions.length - 2];
+      
+      const dist = calculateDistance(prev.lat, prev.lon, last.lat, last.lon);
+      const timeSec = (last.time - prev.time) / 1000;
+
+      if (timeSec > 0) {
+        const speedKmH = (dist / timeSec) * 3600;
+        
+        // Jika kecepatan kurang dari 1.5 km/jam, anggap sedang berhenti / diam
+        if (speedKmH < 1.5) {
+          setCurrentPace(0);
+        } else {
+          setCurrentPace(timeSec / dist);
+        }
+      }
+    }
+  }, [positions, isPaused]);
+
   const startRecording = () => {
     if (!("geolocation" in navigator)) {
       setErrorMessage("Browser/Perangkat Anda tidak mendukung GPS.");
@@ -85,6 +138,9 @@ const MobileRecordRun = () => {
     setIsRecording(true);
     setIsPaused(false);
     setErrorMessage('');
+    
+    // Minta layar tetap menyala
+    requestWakeLock();
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
@@ -117,6 +173,8 @@ const MobileRecordRun = () => {
 
   const pauseRecording = () => {
     setIsPaused(true);
+    setCurrentPace(0); // Set pace ke 0 saat dijeda
+    releaseWakeLock(); // Izinkan layar mati
     if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
   };
 
@@ -125,6 +183,7 @@ const MobileRecordRun = () => {
   const stopRecording = () => {
     setIsRecording(false);
     setIsPaused(false);
+    releaseWakeLock();
     if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
     clearInterval(timerRef.current);
     
@@ -138,7 +197,6 @@ const MobileRecordRun = () => {
       const runId = Date.now().toString(); 
       const now = new Date();
       
-      // Kalkulasi Kalori & Langkah Kaki
       const totalCalories = Math.round(distance * 65);
       const totalSteps = Math.round(distance * 1300);
 
@@ -148,7 +206,7 @@ const MobileRecordRun = () => {
         date: now.toISOString(),
         distance: distance,
         movingTime: duration,
-        avgPace: formatPace(),
+        avgPace: formatAvgPace(), // Simpan Average Pace untuk riwayat keseluruhan
         calories: totalCalories,
         steps: totalSteps,
         positions: positions 
@@ -169,11 +227,20 @@ const MobileRecordRun = () => {
     return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
   };
 
-  const formatPace = () => {
+  // Fungsi memformat Pace Rata-rata (Untuk Data yang Disimpan)
+  const formatAvgPace = () => {
     if (distance === 0 || duration === 0) return "00:00";
     const minutesPerKm = (duration / 60) / distance;
     const m = Math.floor(minutesPerKm);
     const s = Math.floor((minutesPerKm - m) * 60);
+    return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+  };
+
+  // Fungsi memformat Pace Real-Time (Untuk Display UI)
+  const formatCurrentPaceUI = () => {
+    if (!currentPace || currentPace === 0 || !isFinite(currentPace)) return "00:00";
+    const m = Math.floor(currentPace / 60);
+    const s = Math.floor(currentPace % 60);
     return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
   };
 
@@ -230,7 +297,7 @@ const MobileRecordRun = () => {
           </div>
           <div>
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><Activity size={12}/> Pace</p>
-            <p className="text-3xl font-bold text-slate-800 tracking-tight">{formatPace()}</p>
+            <p className="text-3xl font-bold text-slate-800 tracking-tight">{formatCurrentPaceUI()}</p>
             <p className="text-xs font-medium text-slate-500 mt-0.5">/km</p>
           </div>
         </div>
