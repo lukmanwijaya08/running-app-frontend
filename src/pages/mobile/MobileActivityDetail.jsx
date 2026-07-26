@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route } from 'lucide-react';
+import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route, Flame, Footprints } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-// Fungsi perhitungan jarak pembantu
 const getDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -12,7 +14,6 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
 };
 
-// Formatting Time helper
 const formatTimeStr = (totalSeconds) => {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
@@ -28,7 +29,6 @@ const formatPaceFromSec = (secondsPerKm) => {
   return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
 };
 
-// --- FUNGSI BARU: Penentu Waktu Lari Otomatis ---
 const getDynamicTitle = (timestamp) => {
   const hour = new Date(timestamp).getHours();
   if (hour >= 4 && hour < 10) return 'Lari Pagi';
@@ -37,39 +37,16 @@ const getDynamicTitle = (timestamp) => {
   return 'Lari Malam';
 };
 
-// --- FUNGSI BARU: Menggambar Rute Peta Aktual ---
-const RouteMap = ({ positions }) => {
-  if (!positions || positions.length < 2) {
-    return (
-      <svg className="absolute w-full h-full opacity-70" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <path d="M 10 80 Q 25 30, 50 60 T 90 40" fill="transparent" stroke="#9333ea" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    );
-  }
-
-  // Cari batasan koordinat untuk penyesuaian skala
-  const lats = positions.map(p => p.lat);
-  const lons = positions.map(p => p.lon);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLon = Math.min(...lons);
-  const maxLon = Math.max(...lons);
-
-  const latRange = maxLat - minLat || 0.0001;
-  const lonRange = maxLon - minLon || 0.0001;
-
-  // Konversi Lat/Lon menjadi titik X/Y pada koordinat 0-100
-  const points = positions.map(p => {
-    const x = ((p.lon - minLon) / lonRange) * 100;
-    const y = 100 - (((p.lat - minLat) / latRange) * 100); // Inverse Y karena SVG dihitung dari atas ke bawah
-    return `${x},${y}`;
-  }).join(' ');
-
-  return (
-    <svg className="absolute w-full h-full p-4 drop-shadow-md" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
-      <polyline points={points} fill="none" stroke="#9333ea" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+// FitBounds Component untuk otomatis fokus ke rute lari
+const FitBounds = ({ positions }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (positions.length > 1) {
+      const bounds = L.latLngBounds(positions);
+      map.fitBounds(bounds, { padding: [20, 20] });
+    }
+  }, [positions, map]);
+  return null;
 };
 
 const MobileActivityDetail = () => {
@@ -83,7 +60,6 @@ const MobileActivityDetail = () => {
   const [fastestPace, setFastestPace] = useState(9999);
 
   useEffect(() => {
-    // Ambil data dari Local Storage
     const savedRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
     const runData = savedRuns.find(r => r.id === id);
 
@@ -156,10 +132,10 @@ const MobileActivityDetail = () => {
     return <div className="min-h-screen flex items-center justify-center text-slate-500">Data lari tidak ditemukan.</div>;
   }
 
-  // Tanggal & Judul Dinamis
   const runDate = new Date(activity.date);
   const displayDate = runDate.toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB';
   const dynamicTitle = `${getDynamicTitle(activity.date)} (${runDate.getDate()}/${runDate.getMonth() + 1}/${runDate.getFullYear()})`;
+  const mapPositions = activity.positions.map(p => [p.lat, p.lon]);
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
@@ -171,14 +147,15 @@ const MobileActivityDetail = () => {
       </div>
 
       <div className="max-w-md mx-auto pt-16">
-        {/* BAGIAN PETA AKTUAL */}
-        <div className="w-full h-64 bg-slate-200 relative overflow-hidden flex flex-col items-center justify-end pb-6 rounded-b-[2.5rem] shadow-sm">
-          <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-          
-          {/* Komponen Peta dipanggil di sini */}
-          <RouteMap positions={activity.positions} />
-
-          <div className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-full shadow-sm text-xs font-semibold text-slate-700 z-10 flex items-center gap-1.5">
+        
+        {/* LEAFLET MAP TERINTEGRASI */}
+        <div className="w-full h-72 bg-slate-200 relative overflow-hidden flex flex-col items-center justify-end pb-6 rounded-b-[2.5rem] shadow-sm z-0">
+          <MapContainer zoomControl={false} style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0 }}>
+             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+             {mapPositions.length > 1 && <Polyline positions={mapPositions} color="#9333ea" weight={5} lineCap="round" lineJoin="round" />}
+             <FitBounds positions={mapPositions} />
+          </MapContainer>
+          <div className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-full shadow-sm text-xs font-semibold text-slate-700 z-[400] flex items-center gap-1.5 pointer-events-none mb-2">
             <MapPin size={14} className="text-purple-600"/> Peta Rute Terekam
           </div>
         </div>
@@ -204,6 +181,14 @@ const MobileActivityDetail = () => {
               <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><TrendingUp size={12}/> Elevasi Maks</p>
               <p className="text-xl font-semibold text-slate-800 tracking-tight">{maxElevation > -9000 ? maxElevation : 0} m</p>
             </div>
+            <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
+              <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Flame size={12}/> Kalori</p>
+              <p className="text-xl font-semibold text-slate-800 tracking-tight">{activity.calories || 0} kkal</p>
+            </div>
+            <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
+              <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Footprints size={12}/> Langkah</p>
+              <p className="text-xl font-semibold text-slate-800 tracking-tight">{activity.steps || 0}</p>
+            </div>
           </div>
         </div>
 
@@ -220,7 +205,6 @@ const MobileActivityDetail = () => {
               <div className="w-12 font-semibold text-right">Elv (+/-)</div>
             </div>
             
-            {/* TAMBAHAN SCROLL: max-h-72 overflow-y-auto */}
             <div className="space-y-1 max-h-72 overflow-y-auto pr-2">
               {splitData.map((split, idx) => {
                 const isFastest = split.paceSec === fastestPace && splitData.length > 1;

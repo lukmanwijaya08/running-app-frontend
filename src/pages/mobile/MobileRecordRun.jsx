@@ -5,7 +5,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { ChevronLeft, Play, Square, Pause, MapPin, Activity, Clock, Route as RouteIcon, AlertCircle } from 'lucide-react';
 
-// Custom Marker untuk lokasi saat ini
 const blueDotIcon = new L.DivIcon({
   className: 'custom-div-icon',
   html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
@@ -13,7 +12,6 @@ const blueDotIcon = new L.DivIcon({
   iconAnchor: [8, 8]
 });
 
-// Helper untuk Auto-Center Map
 const RecenterAutomatically = ({ position }) => {
   const map = useMap();
   useEffect(() => {
@@ -24,7 +22,6 @@ const RecenterAutomatically = ({ position }) => {
   return null;
 };
 
-// Fungsi perhitungan jarak pembantu
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -33,7 +30,6 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
 };
 
-// Fungsi Penentu Waktu Lari (Dinamis)
 const getDynamicTitle = (timestamp) => {
   const hour = new Date(timestamp).getHours();
   if (hour >= 4 && hour < 10) return 'Lari Pagi';
@@ -47,7 +43,7 @@ const MobileRecordRun = () => {
   
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [positions, setPositions] = useState([]); // Menyimpan objek {lat, lon, alt, time}
+  const [positions, setPositions] = useState([]);
   const [currentPosition, setCurrentPosition] = useState(null);
   
   const [distance, setDistance] = useState(0); 
@@ -57,7 +53,6 @@ const MobileRecordRun = () => {
   const watchIdRef = useRef(null);
   const timerRef = useRef(null);
 
-  // Initial Location Fetch
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -70,7 +65,6 @@ const MobileRecordRun = () => {
     }
   }, []);
 
-  // Timer Effect
   useEffect(() => {
     if (isRecording && !isPaused) {
       timerRef.current = setInterval(() => {
@@ -94,7 +88,6 @@ const MobileRecordRun = () => {
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        // Ekstraksi data komplit layaknya GPX
         const { latitude, longitude, altitude } = position.coords;
         const timestamp = position.timestamp; 
         
@@ -129,7 +122,6 @@ const MobileRecordRun = () => {
 
   const resumeRecording = () => startRecording();
 
-  // FUNGSI PENYIMPANAN KE LOCALSTORAGE (Format GPX-Like)
   const stopRecording = () => {
     setIsRecording(false);
     setIsPaused(false);
@@ -146,7 +138,10 @@ const MobileRecordRun = () => {
       const runId = Date.now().toString(); 
       const now = new Date();
       
-      // Struktur JSON berbobot GPX
+      // Kalkulasi Kalori & Langkah Kaki
+      const totalCalories = Math.round(distance * 65);
+      const totalSteps = Math.round(distance * 1300);
+
       const newRunData = {
         id: runId,
         title: `${getDynamicTitle(now.toISOString())} (${now.toLocaleDateString('id-ID')})`,
@@ -154,14 +149,14 @@ const MobileRecordRun = () => {
         distance: distance,
         movingTime: duration,
         avgPace: formatPace(),
+        calories: totalCalories,
+        steps: totalSteps,
         positions: positions 
       };
 
-      // Tarik data lama, tambahkan yang baru ke indeks pertama
       const existingRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
       localStorage.setItem('savedRuns', JSON.stringify([newRunData, ...existingRuns]));
       
-      // Redirect ke halaman detail 
       navigate(`/mobile/activity/${runId}`);
     }
   };
@@ -206,7 +201,6 @@ const MobileRecordRun = () => {
         </div>
       </div>
 
-      {/* Area Peta Leaflet */}
       <div className="flex-1 w-full bg-slate-800 relative z-0">
         {currentPosition ? (
           <MapContainer center={currentPosition} zoom={17} zoomControl={false} style={{ height: '100%', width: '100%' }}>
