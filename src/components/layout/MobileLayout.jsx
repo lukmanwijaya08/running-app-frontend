@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-// Ikon diubah menggunakan 'Play' yang solid untuk tombol tengah
-import { Home, ActivitySquare, User, Play, PlusCircle } from 'lucide-react';
+// Ikon Play dihapus karena kita akan menggunakan custom SVG untuk orang lari
+import { Home, ActivitySquare, User, PlusCircle } from 'lucide-react';
 
 const MobileLayout = () => {
   const location = useLocation();
@@ -55,11 +55,16 @@ const MobileLayout = () => {
               >
                 {/* Ring pelindung warna putih untuk efek melengkung (cutout) yang tipis dan minimalis */}
                 <div className="p-[6px] bg-white rounded-full shadow-[0_-4px_10px_rgba(0,0,0,0.02)] mb-1">
-                  {/* Tombol Utama dengan gradien lembut khas modern app */}
-                  <div className="w-14 h-14 bg-gradient-to-tr from-purple-600 to-indigo-500 rounded-full flex items-center justify-center shadow-[0_8px_16px_rgba(147,51,234,0.3)] text-white active:scale-90 transition-all duration-200">
-                    {/* ml-1 digunakan untuk menyeimbangkan icon Play secara visual agar terlihat pas di tengah */}
-                    <Play size={24} fill="currentColor" className="ml-1 text-white drop-shadow-sm" /> 
+                  
+                  {/* Tombol Utama: Gradient diubah menjadi bg-purple-600 agar seragam dengan warna ungu lainnya */}
+                  <div className="w-14 h-14 bg-purple-600 rounded-full flex items-center justify-center shadow-[0_8px_16px_rgba(147,51,234,0.3)] text-white active:scale-90 transition-all duration-200">
+                    
+                    {/* Custom SVG Ikon Orang Lari (Running Person) solid */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="text-white drop-shadow-sm ml-0.5">
+                      <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
+                    </svg>
                   </div>
+                  
                 </div>
                 {/* Label dengan font-medium agar tetap clean */}
                 <span className="text-[10px] font-medium text-slate-500">
