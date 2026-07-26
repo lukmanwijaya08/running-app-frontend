@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Map, Clock, Route, ChevronRight, Plus, Flame, Footprints, CalendarDays, Activity, Target } from 'lucide-react';
+import { Map, Clock, Route, ChevronRight, Flame, Footprints, CalendarDays, Activity, Target } from 'lucide-react';
 
 const MobileHome = () => {
   const navigate = useNavigate();
   const [animatedProgress, setAnimatedProgress] = useState(0);
 
-  // Menarik foto yang sama dengan profil (Idealnya dari Redux/Context, ini simulasi)
   const profilePhoto = "https://i.pravatar.cc/150?img=11";
 
   const weekDays = [
@@ -16,7 +15,6 @@ const MobileHome = () => {
     { day: 'M', date: 26, active: false },
   ];
 
-  // Data lebih dari 3 untuk menguji pembatasan slice(0,3)
   const recentActivities = [
     { id: 1, title: 'Morning Run Semarang', description: 'Lari santai', distance: '5.2 km', pace: '06:15', time: '32:30', date: 'Hari ini', iconColor: 'text-purple-600', bgIcon: 'bg-purple-50' },
     { id: 2, title: 'Night Speed Workout', description: 'Interval', distance: '8.0 km', pace: '05:30', time: '44:00', date: 'Kemarin', iconColor: 'text-orange-500', bgIcon: 'bg-orange-50' },
@@ -40,18 +38,13 @@ const MobileHome = () => {
   return (
     <div className="pt-8 px-5">
       
+      {/* HEADER: Tombol Plus Dihilangkan */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <p className="text-xs font-medium text-slate-400 mb-1">Jumat, 24 Juli • Semarang</p>
           <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">Halo, Lukman!</h1>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => navigate('/mobile/add-activity')} 
-            className="w-11 h-11 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-md shadow-purple-200 active:scale-95 transition-transform"
-          >
-            <Plus size={24} strokeWidth={2.5} />
-          </button>
           <div className="w-11 h-11 rounded-full overflow-hidden border border-slate-200 shadow-sm bg-slate-100">
             <img src={profilePhoto} alt="Profil" className="w-full h-full object-cover" />
           </div>
@@ -165,12 +158,10 @@ const MobileHome = () => {
       <div className="mb-4">
         <div className="flex items-center justify-between mb-5 px-1">
           <h2 className="text-lg font-semibold text-slate-800 tracking-tight">Aktivitas Terbaru</h2>
-          {/* Navigasi Lihat Semua */}
           <button onClick={() => navigate('/mobile/activities')} className="text-xs font-medium text-purple-600">Lihat Semua</button>
         </div>
 
         <div className="space-y-4">
-          {/* Batasi hanya 3 data terbaru menggunakan slice(0,3) */}
           {recentActivities.slice(0, 3).map((activity) => (
             <div key={activity.id} onClick={() => navigate(`/mobile/activity/${activity.id}`)} className="bg-white rounded-3xl p-4 shadow-sm border border-slate-50 flex flex-col gap-4 cursor-pointer active:scale-[0.98] transition-transform">
               <div className="flex justify-between items-center">

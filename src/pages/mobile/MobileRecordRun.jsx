@@ -5,6 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { ChevronLeft, Play, Square, Pause, MapPin, Activity, Clock, Route as RouteIcon, AlertCircle } from 'lucide-react';
 
+// Custom Marker untuk lokasi saat ini
 const blueDotIcon = new L.DivIcon({
   className: 'custom-div-icon',
   html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
@@ -12,6 +13,7 @@ const blueDotIcon = new L.DivIcon({
   iconAnchor: [8, 8]
 });
 
+// Helper untuk Auto-Center Map
 const RecenterAutomatically = ({ position }) => {
   const map = useMap();
   useEffect(() => {
@@ -22,12 +24,22 @@ const RecenterAutomatically = ({ position }) => {
   return null;
 };
 
+// Fungsi perhitungan jarak pembantu
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
+};
+
+// Fungsi Penentu Waktu Lari (Dinamis)
+const getDynamicTitle = (timestamp) => {
+  const hour = new Date(timestamp).getHours();
+  if (hour >= 4 && hour < 10) return 'Lari Pagi';
+  if (hour >= 10 && hour < 15) return 'Lari Siang';
+  if (hour >= 15 && hour < 18) return 'Lari Sore';
+  return 'Lari Malam';
 };
 
 const MobileRecordRun = () => {
@@ -45,6 +57,7 @@ const MobileRecordRun = () => {
   const watchIdRef = useRef(null);
   const timerRef = useRef(null);
 
+  // Initial Location Fetch
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -57,6 +70,7 @@ const MobileRecordRun = () => {
     }
   }, []);
 
+  // Timer Effect
   useEffect(() => {
     if (isRecording && !isPaused) {
       timerRef.current = setInterval(() => {
@@ -80,9 +94,9 @@ const MobileRecordRun = () => {
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        // Ambil data komplit termasuk altitude dan timestamp
+        // Ekstraksi data komplit layaknya GPX
         const { latitude, longitude, altitude } = position.coords;
-        const timestamp = position.timestamp; // Waktu ms
+        const timestamp = position.timestamp; 
         
         const newPos = { lat: latitude, lon: longitude, alt: altitude || 0, time: timestamp };
         
@@ -102,7 +116,7 @@ const MobileRecordRun = () => {
         else if(error.code === 2) setErrorMessage("Sinyal GPS tidak tersedia.");
         else if(error.code === 3) setErrorMessage("Pencarian GPS Timeout (lambat).");
         
-        setTimeout(() => setErrorMessage(''), 5000); // Hilangkan notif setelah 5 detik
+        setTimeout(() => setErrorMessage(''), 5000); 
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
     );
@@ -115,31 +129,39 @@ const MobileRecordRun = () => {
 
   const resumeRecording = () => startRecording();
 
+  // FUNGSI PENYIMPANAN KE LOCALSTORAGE (Format GPX-Like)
   const stopRecording = () => {
     setIsRecording(false);
     setIsPaused(false);
     if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
     clearInterval(timerRef.current);
     
+    if (distance < 0.01 && duration < 10) {
+      alert("Jarak atau waktu terlalu pendek untuk disimpan.");
+      navigate('/mobile');
+      return;
+    }
+
     if(window.confirm('Akhiri sesi lari ini dan simpan?')) {
-      const runId = Date.now().toString(); // Generate ID unik
+      const runId = Date.now().toString(); 
       const now = new Date();
       
+      // Struktur JSON berbobot GPX
       const newRunData = {
         id: runId,
-        title: 'Lari Sore (' + now.toLocaleDateString() + ')',
+        title: `${getDynamicTitle(now.toISOString())} (${now.toLocaleDateString('id-ID')})`,
         date: now.toISOString(),
         distance: distance,
         movingTime: duration,
-        positions: positions,
-        avgPace: formatPace()
+        avgPace: formatPace(),
+        positions: positions 
       };
 
-      // Simpan ke Local Storage (Support iOS & Android)
+      // Tarik data lama, tambahkan yang baru ke indeks pertama
       const existingRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
       localStorage.setItem('savedRuns', JSON.stringify([newRunData, ...existingRuns]));
       
-      // Redirect ke halaman detail untuk melihat grafik
+      // Redirect ke halaman detail 
       navigate(`/mobile/activity/${runId}`);
     }
   };
@@ -160,13 +182,11 @@ const MobileRecordRun = () => {
     return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
   };
 
-  // Konversi array object positions ke format array sederhana [lat, lon] untuk polyline leaflet
   const polylinePositions = positions.map(p => [p.lat, p.lon]);
 
   return (
     <div className="h-screen flex flex-col bg-slate-900 relative">
       
-      {/* Toast Notification Error */}
       {errorMessage && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[100] w-[90%] max-w-sm">
           <div className="bg-red-500/90 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3">
@@ -186,6 +206,7 @@ const MobileRecordRun = () => {
         </div>
       </div>
 
+      {/* Area Peta Leaflet */}
       <div className="flex-1 w-full bg-slate-800 relative z-0">
         {currentPosition ? (
           <MapContainer center={currentPosition} zoom={17} zoomControl={false} style={{ height: '100%', width: '100%' }}>

@@ -1,190 +1,110 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Map, ChevronRight, Route, Flame, Clock, Calendar, Edit2, Trash2, X } from 'lucide-react';
+import { Map, Clock, Route, ChevronRight, Flame, Activity } from 'lucide-react';
+
+// Helper untuk judul dinamis (konsisten dengan halaman detail)
+const getDynamicTitle = (timestamp) => {
+  const hour = new Date(timestamp).getHours();
+  if (hour >= 4 && hour < 10) return 'Lari Pagi';
+  if (hour >= 10 && hour < 15) return 'Lari Siang';
+  if (hour >= 15 && hour < 18) return 'Lari Sore';
+  return 'Lari Malam';
+};
+
+// Formatting Time helper (dari detik ke HH:MM:SS atau MM:SS)
+const formatTimeStr = (totalSeconds) => {
+  if (!totalSeconds) return "00:00";
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  if (h > 0) return `${h < 10 ? '0'+h : h}:${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+  return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+};
 
 const MobileActivity = () => {
   const navigate = useNavigate();
-  const [filterDate, setFilterDate] = useState('');
-  
-  // State untuk Modal Edit diperbarui dengan field tambahan
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editData, setEditData] = useState({ 
-    id: null, 
-    title: '', 
-    description: '',
-    date: '',
-    distance: '', 
-    pace: '',
-    time: '' 
-  });
+  const [activities, setActivities] = useState([]);
 
-  // Data Dummy Aktivitas
-  const [activities, setActivities] = useState([
-    { id: 1, title: 'Morning Run Semarang', description: 'Lari santai', distance: '5.2 km', pace: '06:15', time: '32:30', date: '2026-07-24', displayDate: '24 Jul', color: 'text-purple-600', bgColor: 'bg-purple-50' },
-    { id: 2, title: 'Night Speed Workout', description: 'Interval training', distance: '8.0 km', pace: '05:30', time: '44:00', date: '2026-07-23', displayDate: '23 Jul', color: 'text-orange-500', bgColor: 'bg-orange-50' },
-    { id: 3, title: 'Sunday Long Run', description: 'Endurance', distance: '15.5 km', pace: '06:45', time: '01:45:00', date: '2026-07-20', displayDate: '20 Jul', color: 'text-purple-600', bgColor: 'bg-purple-50' },
-  ]);
-
-  // Fungsi Filter
-  const displayedActivities = filterDate 
-    ? activities.filter(a => a.date === filterDate)
-    : activities;
-
-  // Fungsi Hapus dengan Alert
-  const handleDelete = (id, title) => {
-    if (window.confirm(`Apakah Anda yakin ingin menghapus aktivitas "${title}"? Data tidak dapat dikembalikan.`)) {
-      setActivities(activities.filter(a => a.id !== id));
-      alert('Data berhasil dihapus.');
-    }
-  };
-
-  // Fungsi Buka Modal Edit diperbarui untuk memuat data baru
-  const openEditModal = (activity) => {
-    setEditData({ 
-      id: activity.id, 
-      title: activity.title, 
-      description: activity.description,
-      date: activity.date,
-      distance: activity.distance.replace(' km',''), 
-      pace: activity.pace,
-      time: activity.time 
-    });
-    setIsEditModalOpen(true);
-  };
-
-  // Fungsi Simpan Edit diperbarui untuk memproses data baru
-  const handleEditSave = (e) => {
-    e.preventDefault();
-    
-    // Format ulang displayDate (contoh sederhana ambil format DD MMM dari date)
-    const dateObj = new Date(editData.date);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
-    const formattedDisplayDate = `${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
-
-    setActivities(activities.map(a => a.id === editData.id ? { 
-      ...a, 
-      title: editData.title, 
-      description: editData.description,
-      date: editData.date,
-      displayDate: isNaN(dateObj.getTime()) ? a.displayDate : formattedDisplayDate,
-      distance: `${editData.distance} km`, 
-      pace: editData.pace,
-      time: editData.time 
-    } : a));
-    
-    setIsEditModalOpen(false);
-    alert('Data berhasil diperbarui!');
-  };
+  useEffect(() => {
+    // Mengambil data dari localStorage saat halaman dimuat
+    const savedData = JSON.parse(localStorage.getItem('savedRuns') || '[]');
+    // Urutkan dari yang paling baru
+    const sortedData = savedData.sort((a, b) => new Date(b.date) - new Date(a.date));
+    setActivities(sortedData);
+  }, []);
 
   return (
-    <div className="pt-8 px-5 pb-10">
-      <div className="flex items-center justify-between mb-8 relative">
+    <div className="pt-8 px-5 pb-6">
+      
+      {/* Header Halaman */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 shadow-sm">
+          <Activity size={20} strokeWidth={2.5} />
+        </div>
         <div>
-          <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">Aktivitas Saya</h1>
-          <p className="text-xs font-medium text-slate-400 mt-1">
-            {filterDate ? `Menampilkan data: ${filterDate}` : 'Geser kiri untuk aksi'}
-          </p>
+          <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">Semua Aktivitas</h1>
+          <p className="text-xs font-medium text-slate-400">Riwayat lari yang tersimpan</p>
         </div>
-        
-        {/* Tombol Kalender dengan Native Date Picker */}
-        <div className="relative w-11 h-11 bg-white rounded-full shadow-sm flex items-center justify-center text-purple-600 border border-slate-50 overflow-hidden">
-          <Calendar size={20} />
-          <input 
-            type="date" 
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-          />
-        </div>
-        
-        {/* Tombol Reset Filter (muncul jika ada filter aktif) */}
-        {filterDate && (
-          <button onClick={() => setFilterDate('')} className="absolute -bottom-5 right-1 text-[10px] font-semibold text-red-500">Reset Filter</button>
-        )}
       </div>
 
+      {/* Daftar Aktivitas */}
       <div className="space-y-4">
-        {displayedActivities.length === 0 ? (
-          <p className="text-center text-slate-400 text-sm mt-10">Tidak ada aktivitas pada tanggal ini.</p>
+        {activities.length === 0 ? (
+          // Tampilan jika belum ada data lari di Local Storage
+          <div className="flex flex-col items-center justify-center py-24 text-slate-400 bg-white rounded-3xl border border-slate-50 shadow-sm">
+            <Map size={48} className="mb-4 text-slate-200" strokeWidth={1.5} />
+            <p className="text-sm font-semibold text-slate-600">Belum ada aktivitas lari</p>
+            <p className="text-xs mt-1">Mulai rekam lari pertamamu sekarang!</p>
+          </div>
         ) : (
-          displayedActivities.map((activity) => (
-            <div key={activity.id} className="overflow-x-auto snap-x snap-mandatory hide-scrollbar flex w-full rounded-3xl">
-              
-              <div onClick={() => navigate(`/mobile/activity/${activity.id}`)} className="snap-center shrink-0 w-full bg-white p-4 shadow-sm border border-slate-50 flex flex-col gap-4 cursor-pointer active:scale-[0.99] transition-transform rounded-3xl">
+          // Mapping data aktivitas
+          activities.map((run) => {
+            const runDate = new Date(run.date);
+            const dateString = runDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            const dynamicTitle = getDynamicTitle(run.date);
+            
+            return (
+              <div 
+                key={run.id} 
+                onClick={() => navigate(`/mobile/activity/${run.id}`)} 
+                className="bg-white rounded-3xl p-4 shadow-sm border border-slate-50 flex flex-col gap-4 cursor-pointer active:scale-[0.98] transition-transform"
+              >
+                {/* Judul & Tanggal */}
                 <div className="flex justify-between items-center">
-                  <div className="flex gap-4 items-center">
-                    <div className={`w-12 h-12 rounded-2xl ${activity.bgColor} flex items-center justify-center`}><Map size={20} className={activity.color} /></div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center">
+                      <Map size={20} className="text-purple-600" />
+                    </div>
                     <div>
-                      <h3 className="font-semibold text-sm text-slate-800">{activity.title}</h3>
-                      <p className="text-xs font-medium text-slate-400 mt-0.5">{activity.displayDate} • {activity.description}</p>
+                      <h3 className="font-semibold text-slate-800 text-sm">{dynamicTitle}</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">{dateString}</p>
                     </div>
                   </div>
                   <ChevronRight size={18} className="text-slate-300" />
                 </div>
+
+                {/* Ringkasan Split Card (Jarak, Pace, Waktu) */}
                 <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center px-4">
-                  <div className="flex items-center gap-1.5"><Route size={14} className="text-slate-400"/><p className="text-xs font-semibold text-slate-700">{activity.distance}</p></div>
-                  <div className="w-1 h-1 rounded-full bg-slate-300"></div>
-                  <div className="flex items-center gap-1.5"><Flame size={14} className="text-slate-400"/><p className="text-xs font-semibold text-slate-700">{activity.pace}</p></div>
-                  <div className="w-1 h-1 rounded-full bg-slate-300"></div>
-                  <div className="flex items-center gap-1.5"><Clock size={14} className="text-slate-400"/><p className="text-xs font-semibold text-slate-700">{activity.time}</p></div>
+                  <div className="flex items-center gap-1.5">
+                    <Route size={14} className="text-slate-400"/>
+                    <p className="text-xs font-semibold text-slate-700">{(run.distance || 0).toFixed(2)} km</p>
+                  </div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
+                  <div className="flex items-center gap-1.5">
+                    <Flame size={14} className="text-slate-400"/>
+                    <p className="text-xs font-semibold text-slate-700">{run.avgPace || "00:00"}</p>
+                  </div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
+                  <div className="flex items-center gap-1.5">
+                    <Clock size={14} className="text-slate-400"/>
+                    <p className="text-xs font-semibold text-slate-700">{formatTimeStr(run.movingTime)}</p>
+                  </div>
                 </div>
               </div>
-              
-              <div className="snap-center shrink-0 w-32 flex items-center justify-center gap-3 pl-3 pr-1">
-                <button onClick={() => openEditModal(activity)} className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-orange-500 shadow-sm active:scale-90 transition-transform"><Edit2 size={18} /></button>
-                <button onClick={() => handleDelete(activity.id, activity.title)} className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-500 shadow-sm active:scale-90 transition-transform"><Trash2 size={18} /></button>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
-
-      {/* MODAL POP UP EDIT DIPERBARUI */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end justify-center sm:items-center">
-          <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl transform transition-transform animate-in slide-in-from-bottom-full max-h-[90vh] overflow-y-auto hide-scrollbar">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold text-slate-800">Edit Aktivitas</h2>
-              <button onClick={() => setIsEditModalOpen(false)} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500"><X size={18}/></button>
-            </div>
-            <form onSubmit={handleEditSave} className="space-y-4">
-              
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-500 ml-1">Judul Aktivitas</label>
-                <input type="text" value={editData.title} onChange={(e) => setEditData({...editData, title: e.target.value})} className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-500 ml-1">Deskripsi</label>
-                <input type="text" value={editData.description} onChange={(e) => setEditData({...editData, description: e.target.value})} className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-500 ml-1">Tanggal</label>
-                <input type="date" value={editData.date} onChange={(e) => setEditData({...editData, date: e.target.value})} className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-500 ml-1">Jarak (km)</label>
-                  <input type="number" step="0.1" value={editData.distance} onChange={(e) => setEditData({...editData, distance: e.target.value})} className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-500 ml-1">Waktu</label>
-                  <input type="text" value={editData.time} onChange={(e) => setEditData({...editData, time: e.target.value})} placeholder="00:00:00" className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-500 ml-1">Pace Rata-rata</label>
-                <input type="text" value={editData.pace} onChange={(e) => setEditData({...editData, pace: e.target.value})} placeholder="00:00" className="w-full bg-slate-50 px-4 py-3 rounded-xl outline-none font-medium text-slate-800 shadow-inner" required />
-              </div>
-
-              <button type="submit" className="w-full bg-purple-600 text-white font-medium text-base py-4 rounded-full shadow-md mt-4">Simpan Perubahan</button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

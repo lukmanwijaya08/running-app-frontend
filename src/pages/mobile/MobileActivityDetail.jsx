@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route } from 'lucide-react';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Fungsi perhitungan jarak pembantu
 const getDistance = (lat1, lon1, lat2, lon2) => {
@@ -28,9 +28,53 @@ const formatPaceFromSec = (secondsPerKm) => {
   return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
 };
 
+// --- FUNGSI BARU: Penentu Waktu Lari Otomatis ---
+const getDynamicTitle = (timestamp) => {
+  const hour = new Date(timestamp).getHours();
+  if (hour >= 4 && hour < 10) return 'Lari Pagi';
+  if (hour >= 10 && hour < 15) return 'Lari Siang';
+  if (hour >= 15 && hour < 18) return 'Lari Sore';
+  return 'Lari Malam';
+};
+
+// --- FUNGSI BARU: Menggambar Rute Peta Aktual ---
+const RouteMap = ({ positions }) => {
+  if (!positions || positions.length < 2) {
+    return (
+      <svg className="absolute w-full h-full opacity-70" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path d="M 10 80 Q 25 30, 50 60 T 90 40" fill="transparent" stroke="#9333ea" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    );
+  }
+
+  // Cari batasan koordinat untuk penyesuaian skala
+  const lats = positions.map(p => p.lat);
+  const lons = positions.map(p => p.lon);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+
+  const latRange = maxLat - minLat || 0.0001;
+  const lonRange = maxLon - minLon || 0.0001;
+
+  // Konversi Lat/Lon menjadi titik X/Y pada koordinat 0-100
+  const points = positions.map(p => {
+    const x = ((p.lon - minLon) / lonRange) * 100;
+    const y = 100 - (((p.lat - minLat) / latRange) * 100); // Inverse Y karena SVG dihitung dari atas ke bawah
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <svg className="absolute w-full h-full p-4 drop-shadow-md" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+      <polyline points={points} fill="none" stroke="#9333ea" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+};
+
 const MobileActivityDetail = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); // Mengambil ID dari URL
+  const { id } = useParams(); 
   
   const [activity, setActivity] = useState(null);
   const [splitData, setSplitData] = useState([]);
@@ -39,7 +83,7 @@ const MobileActivityDetail = () => {
   const [fastestPace, setFastestPace] = useState(9999);
 
   useEffect(() => {
-    // 1. Ambil data dari Local Storage
+    // Ambil data dari Local Storage
     const savedRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
     const runData = savedRuns.find(r => r.id === id);
 
@@ -49,7 +93,6 @@ const MobileActivityDetail = () => {
     }
   }, [id]);
 
-  // 2. Mesin Kalkulasi Analitik
   const calculateAnalytics = (positions) => {
     if (!positions || positions.length < 2) return;
 
@@ -61,7 +104,6 @@ const MobileActivityDetail = () => {
     let highestElev = -9999;
     let bestPace = 9999;
 
-    // Iterasi setiap titik koordinat yang terekam
     for (let i = 1; i < positions.length; i++) {
       const prev = positions[i-1];
       const curr = positions[i];
@@ -69,27 +111,19 @@ const MobileActivityDetail = () => {
       const d = getDistance(prev.lat, prev.lon, curr.lat, curr.lon);
       runningDist += d;
 
-      // Catat ketinggian tertinggi
       if(curr.alt > highestElev) highestElev = curr.alt;
 
-      // Tambahkan titik data untuk grafik (Downsampling tiap 50 meter agar grafik tidak terlalu padat)
       if (charts.length === 0 || runningDist - charts[charts.length-1].km >= 0.05) {
-        charts.push({
-          km: runningDist,
-          elevation: Math.round(curr.alt),
-        });
+        charts.push({ km: runningDist, elevation: Math.round(curr.alt) });
       }
 
-      // Potong Split jika menyentuh 1 km penuh atau mencapai titik data terakhir
       if (runningDist >= currentKmTarget || i === positions.length - 1) {
         const splitStartPos = positions[splitStartIndex];
         const splitEndPos = positions[i];
         
-        // Kalkulasi waktu dalam detik berdasarkan Timestamp perangkat
         const durationMs = splitEndPos.time - splitStartPos.time;
         const durationSec = durationMs / 1000;
         
-        // Kalkulasi jarak sebenarnya dalam split ini (bisa sedikit di atas 1 km, misal 1.02 km)
         let actualSplitDist = 0;
         for(let j = splitStartIndex + 1; j <= i; j++) {
             actualSplitDist += getDistance(positions[j-1].lat, positions[j-1].lon, positions[j].lat, positions[j].lon);
@@ -122,8 +156,10 @@ const MobileActivityDetail = () => {
     return <div className="min-h-screen flex items-center justify-center text-slate-500">Data lari tidak ditemukan.</div>;
   }
 
-  // Format Tanggal
-  const displayDate = new Date(activity.date).toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+  // Tanggal & Judul Dinamis
+  const runDate = new Date(activity.date);
+  const displayDate = runDate.toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+  const dynamicTitle = `${getDynamicTitle(activity.date)} (${runDate.getDate()}/${runDate.getMonth() + 1}/${runDate.getFullYear()})`;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
@@ -135,18 +171,20 @@ const MobileActivityDetail = () => {
       </div>
 
       <div className="max-w-md mx-auto pt-16">
+        {/* BAGIAN PETA AKTUAL */}
         <div className="w-full h-64 bg-slate-200 relative overflow-hidden flex flex-col items-center justify-end pb-6 rounded-b-[2.5rem] shadow-sm">
           <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-          <svg className="absolute w-full h-full opacity-70" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M 10 80 Q 25 30, 50 60 T 90 40" fill="transparent" stroke="#9333ea" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          
+          {/* Komponen Peta dipanggil di sini */}
+          <RouteMap positions={activity.positions} />
+
           <div className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-full shadow-sm text-xs font-semibold text-slate-700 z-10 flex items-center gap-1.5">
             <MapPin size={14} className="text-purple-600"/> Peta Rute Terekam
           </div>
         </div>
 
         <div className="px-5 py-6">
-          <h2 className="text-2xl font-semibold text-slate-800 mb-1 tracking-tight">{activity.title}</h2>
+          <h2 className="text-2xl font-semibold text-slate-800 mb-1 tracking-tight">{dynamicTitle}</h2>
           <p className="text-xs font-medium text-slate-400 mb-6">{displayDate}</p>
 
           <div className="grid grid-cols-2 gap-3">
@@ -170,7 +208,6 @@ const MobileActivityDetail = () => {
         </div>
 
         <div className="px-5 space-y-4">
-          {/* Split Table Terkalkulasi Otomatis */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-50">
             <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
               <Activity size={16} className="text-purple-600"/> Split Kilometer
@@ -183,7 +220,8 @@ const MobileActivityDetail = () => {
               <div className="w-12 font-semibold text-right">Elv (+/-)</div>
             </div>
             
-            <div className="space-y-1">
+            {/* TAMBAHAN SCROLL: max-h-72 overflow-y-auto */}
+            <div className="space-y-1 max-h-72 overflow-y-auto pr-2">
               {splitData.map((split, idx) => {
                 const isFastest = split.paceSec === fastestPace && splitData.length > 1;
                 return (
@@ -204,7 +242,6 @@ const MobileActivityDetail = () => {
             </div>
           </div>
 
-          {/* Grafik Elevasi Dinamis */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-50">
             <h3 className="text-sm font-semibold text-slate-800 mb-6 flex items-center gap-2"><TrendingUp size={16} className="text-orange-400"/> Grafik Ketinggian</h3>
             <div className="h-32 w-full">
