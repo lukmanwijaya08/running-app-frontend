@@ -202,7 +202,7 @@ const MobileActivityDetail = () => {
               <div className="w-8 font-semibold">KM</div>
               <div className="w-12 font-semibold">Pace</div>
               <div className="flex-1"></div>
-              <div className="w-12 font-semibold text-right">Elv (+/-)</div>
+              <div className="w-12 font-semibold text-right">Elv</div>
             </div>
             
             <div className="space-y-1 max-h-72 overflow-y-auto pr-2">
