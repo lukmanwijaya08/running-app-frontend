@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Map, Clock, Route, ChevronRight, Flame, Activity, Trash2, Edit } from 'lucide-react';
+import { Map, Clock, Route, ChevronRight, Flame, Activity, Trash2, Edit, X } from 'lucide-react';
 
 // --- HELPER FUNCTIONS ---
 const getDynamicTitle = (timestamp) => {
@@ -144,6 +144,11 @@ const SwipeableActivityCard = ({ run, onClick, onDelete, onEdit }) => {
 const MobileActivity = () => {
   const navigate = useNavigate();
   const [activities, setActivities] = useState([]);
+  
+  // State untuk kontrol Modal Edit
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingRun, setEditingRun] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '' });
 
   useEffect(() => {
     loadActivities();
@@ -155,29 +160,37 @@ const MobileActivity = () => {
     setActivities(sortedData);
   };
 
+  // Fungsi Hapus Langsung Tanpa Konfirmasi
   const handleDelete = (id) => {
-    if (window.confirm("Yakin ingin menghapus riwayat lari ini?")) {
-      const savedData = JSON.parse(localStorage.getItem('savedRuns') || '[]');
-      const filteredData = savedData.filter(run => run.id !== id);
-      localStorage.setItem('savedRuns', JSON.stringify(filteredData));
-      setActivities(filteredData);
-    }
+    const savedData = JSON.parse(localStorage.getItem('savedRuns') || '[]');
+    const filteredData = savedData.filter(run => run.id !== id);
+    localStorage.setItem('savedRuns', JSON.stringify(filteredData));
+    setActivities(filteredData);
   };
 
-  const handleEdit = (run) => {
+  // Membuka Modal Edit dan Mengisi Form
+  const handleEditClick = (run) => {
     const currentTitle = run.title || getDynamicTitle(run.date);
-    const newTitle = window.prompt("Ubah nama aktivitas lari:", currentTitle);
-    
-    if (newTitle !== null && newTitle.trim() !== "") {
+    setEditingRun(run);
+    setEditForm({ title: currentTitle });
+    setIsEditModalOpen(true);
+  };
+
+  // Menyimpan Perubahan Edit
+  const handleSaveEdit = (e) => {
+    e.preventDefault();
+    if (editForm.title.trim() !== "") {
       const savedData = JSON.parse(localStorage.getItem('savedRuns') || '[]');
       const updatedData = savedData.map(item => {
-        if (item.id === run.id) {
-          return { ...item, title: newTitle.trim() };
+        if (item.id === editingRun.id) {
+          return { ...item, title: editForm.title.trim() };
         }
         return item;
       });
       localStorage.setItem('savedRuns', JSON.stringify(updatedData));
       setActivities(updatedData);
+      setIsEditModalOpen(false);
+      setEditingRun(null);
     }
   };
 
@@ -210,11 +223,62 @@ const MobileActivity = () => {
               run={run} 
               onClick={(id) => navigate(`/mobile/activity/${id}`)}
               onDelete={handleDelete}
-              onEdit={handleEdit}
+              onEdit={handleEditClick}
             />
           ))
         )}
       </div>
+
+      {/* MODAL POP-UP EDIT AKTIVITAS */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end justify-center sm:items-center">
+          <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl transform transition-transform animate-in slide-in-from-bottom-full">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-semibold text-slate-800">Edit Aktivitas</h2>
+              <button 
+                onClick={() => setIsEditModalOpen(false)} 
+                className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 active:scale-90 transition-transform"
+              >
+                <X size={18}/>
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-500 ml-1">Nama Aktivitas</label>
+                <div className="bg-slate-50 rounded-xl flex items-center gap-3 px-3 border border-slate-100 focus-within:border-purple-300 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
+                  <input 
+                    type="text" 
+                    value={editForm.title} 
+                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} 
+                    className="w-full bg-transparent py-3.5 outline-none font-medium text-sm text-slate-800" 
+                    placeholder="Contoh: Lari Pagi Santai"
+                    required 
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              {/* Data Pendukung Tambahan (Read-only) */}
+              {editingRun && (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between text-xs font-medium text-slate-500 mt-2">
+                  <div className="flex items-center gap-1.5"><Route size={14}/> {(editingRun.distance || 0).toFixed(2)} km</div>
+                  <div className="flex items-center gap-1.5"><Flame size={14}/> {editingRun.avgPace || "00:00"}</div>
+                  <div className="flex items-center gap-1.5"><Clock size={14}/> {formatTimeStr(editingRun.movingTime)}</div>
+                </div>
+              )}
+
+              <button 
+                type="submit" 
+                className="w-full text-white font-medium text-base py-4 rounded-full shadow-md mt-4 transition-colors bg-purple-600 active:scale-[0.98]"
+              >
+                Simpan Perubahan
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
