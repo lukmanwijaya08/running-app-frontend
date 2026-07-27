@@ -453,4 +453,4 @@ const MobileActivityDetail = () => {
   );
 };
 
-export default MobileActivityDetail;
+export default MobileActivityDetail; 
