@@ -1,33 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
+import { useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route, Flame, Footprints, X, Download } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { toPng } from 'html-to-image'; // Tambahan untuk merender HTML ke PNG
+import { ChevronLeft, Play, Square, Pause, MapPin, Activity, Clock, Route as RouteIcon, AlertCircle } from 'lucide-react';
 
-const getDistance = (lat1, lon1, lat2, lon2) => {
+const blueDotIcon = new L.DivIcon({
+  className: 'custom-div-icon',
+  html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8]
+});
+
+const RecenterAutomatically = ({ position }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (position) {
+      map.setView(position, map.getZoom(), { animate: true });
+    }
+  }, [position, map]);
+  return null;
+};
+
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
-};
-
-const formatTimeStr = (totalSeconds) => {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = Math.floor(totalSeconds % 60);
-  if (h > 0) return `${h < 10 ? '0'+h : h}:${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
-  return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
-};
-
-const formatPaceFromSec = (secondsPerKm) => {
-  if(!isFinite(secondsPerKm) || secondsPerKm === 0) return "00:00";
-  const m = Math.floor(secondsPerKm / 60);
-  const s = Math.floor(secondsPerKm % 60);
-  return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
 };
 
 const getDynamicTitle = (timestamp) => {
@@ -38,353 +38,289 @@ const getDynamicTitle = (timestamp) => {
   return 'Lari Malam';
 };
 
-// Komponen otomatis fokus rute pada Leaflet
-const FitBounds = ({ positions }) => {
-  const map = useMap();
-  useEffect(() => {
-    if (positions.length > 1) {
-      const bounds = L.latLngBounds(positions);
-      map.fitBounds(bounds, { padding: [20, 20] });
-    }
-  }, [positions, map]);
-  return null;
-};
-
-const MobileActivityDetail = () => {
+const MobileRecordRun = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); 
   
-  const [activity, setActivity] = useState(null);
-  const [splitData, setSplitData] = useState([]);
-  const [chartData, setChartData] = useState([]);
-  const [maxElevation, setMaxElevation] = useState(0);
-  const [fastestPace, setFastestPace] = useState(9999);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [positions, setPositions] = useState([]);
+  const [currentPosition, setCurrentPosition] = useState(null);
   
-  // State dan Ref untuk fitur Share Overlay (Stat Sticker)
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const stickerRef = useRef(null);
+  const [distance, setDistance] = useState(0); 
+  const [duration, setDuration] = useState(0); 
+  const [currentPace, setCurrentPace] = useState(0); // Detik per km (Real-time)
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  const watchIdRef = useRef(null);
+  const timerRef = useRef(null);
+  const wakeLockRef = useRef(null); // Ref untuk Wake Lock API
 
-  useEffect(() => {
-    const savedRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
-    const runData = savedRuns.find(r => r.id === id);
-
-    if (runData) {
-      setActivity(runData);
-      calculateAnalytics(runData.positions);
-    }
-  }, [id]);
-
-  const calculateAnalytics = (positions) => {
-    if (!positions || positions.length < 2) return;
-
-    let splits = [];
-    let charts = [];
-    let runningDist = 0;
-    let currentKmTarget = 1;
-    let splitStartIndex = 0;
-    let highestElev = -9999;
-    let bestPace = 9999;
-
-    for (let i = 1; i < positions.length; i++) {
-      const prev = positions[i-1];
-      const curr = positions[i];
-      
-      const d = getDistance(prev.lat, prev.lon, curr.lat, curr.lon);
-      runningDist += d;
-
-      if(curr.alt > highestElev) highestElev = curr.alt;
-
-      if (charts.length === 0 || runningDist - charts[charts.length-1].km >= 0.05) {
-        charts.push({ km: runningDist, elevation: Math.round(curr.alt) });
+  // Fungsi untuk meminta Screen Wake Lock (Layar Anti Mati)
+  const requestWakeLock = async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
       }
-
-      if (runningDist >= currentKmTarget || i === positions.length - 1) {
-        const splitStartPos = positions[splitStartIndex];
-        const splitEndPos = positions[i];
-        
-        const durationMs = splitEndPos.time - splitStartPos.time;
-        const durationSec = durationMs / 1000;
-        
-        let actualSplitDist = 0;
-        for(let j = splitStartIndex + 1; j <= i; j++) {
-            actualSplitDist += getDistance(positions[j-1].lat, positions[j-1].lon, positions[j].lat, positions[j].lon);
-        }
-
-        const paceSecPerKm = actualSplitDist > 0 ? durationSec / actualSplitDist : 0;
-        if(paceSecPerKm > 0 && paceSecPerKm < bestPace) bestPace = paceSecPerKm;
-
-        const elevChange = Math.round((splitEndPos.alt || 0) - (splitStartPos.alt || 0));
-
-        splits.push({
-          km: currentKmTarget,
-          paceSec: paceSecPerKm,
-          paceStr: formatPaceFromSec(paceSecPerKm),
-          elevationChange: elevChange
-        });
-
-        currentKmTarget++;
-        splitStartIndex = i;
-      }
+    } catch (err) {
+      console.error(`Wake Lock error: ${err.name}, ${err.message}`);
     }
-
-    setSplitData(splits);
-    setChartData(charts);
-    setMaxElevation(Math.round(highestElev));
-    setFastestPace(bestPace);
   };
 
-  // Algoritma untuk menggambar rute SVG murni tanpa background
-  const renderSvgRoute = (positions) => {
-    if (!positions || positions.length < 2) return null;
-    
-    let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
-    positions.forEach(p => {
-      if (p.lat < minLat) minLat = p.lat;
-      if (p.lat > maxLat) maxLat = p.lat;
-      if (p.lon < minLon) minLon = p.lon;
-      if (p.lon > maxLon) maxLon = p.lon;
-    });
+  const releaseWakeLock = () => {
+    if (wakeLockRef.current !== null) {
+      wakeLockRef.current.release();
+      wakeLockRef.current = null;
+    }
+  };
 
-    const latDiff = maxLat - minLat || 0.0001; // Hindari pembagian nol
-    const lonDiff = maxLon - minLon || 0.0001;
-    
-    const width = 400;
-    const height = 400; 
-    
-    const points = positions.map(p => {
-      const x = ((p.lon - minLon) / lonDiff) * (width * 0.8) + (width * 0.1);
-      const y = ((maxLat - p.lat) / latDiff) * (height * 0.8) + (height * 0.1); // Y dibalik karena titik (0,0) di SVG ada di atas
-      return `${x},${y}`;
-    }).join(' ');
+  // Pantau visibilitas dokumen untuk me-request ulang Wake Lock jika tab aktif kembali
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isRecording && !isPaused) {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isRecording, isPaused]);
 
-    return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full drop-shadow-2xl">
-        <polyline points={points} fill="none" stroke="#ffffff" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentPosition([position.coords.latitude, position.coords.longitude]);
+        },
+        (error) => console.error("Error getting initial location:", error),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isRecording && !isPaused) {
+      timerRef.current = setInterval(() => {
+        setDuration((prev) => prev + 1);
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [isRecording, isPaused]);
+
+  // Efek untuk menghitung Current Pace (Kecepatan Real-time saat ini)
+  useEffect(() => {
+    if (positions.length >= 2 && !isPaused) {
+      const last = positions[positions.length - 1];
+      const prev = positions[positions.length - 2];
+      
+      const dist = calculateDistance(prev.lat, prev.lon, last.lat, last.lon);
+      const timeSec = (last.time - prev.time) / 1000;
+
+      if (timeSec > 0) {
+        const speedKmH = (dist / timeSec) * 3600;
+        
+        // Jika kecepatan kurang dari 1.5 km/jam, anggap sedang berhenti / diam
+        if (speedKmH < 1.5) {
+          setCurrentPace(0);
+        } else {
+          setCurrentPace(timeSec / dist);
+        }
+      }
+    }
+  }, [positions, isPaused]);
+
+  const startRecording = () => {
+    if (!("geolocation" in navigator)) {
+      setErrorMessage("Browser/Perangkat Anda tidak mendukung GPS.");
+      return;
+    }
+
+    setIsRecording(true);
+    setIsPaused(false);
+    setErrorMessage('');
+    
+    // Minta layar tetap menyala
+    requestWakeLock();
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude, altitude } = position.coords;
+        const timestamp = position.timestamp; 
+        
+        const newPos = { lat: latitude, lon: longitude, alt: altitude || 0, time: timestamp };
+        
+        setCurrentPosition([latitude, longitude]);
+        setPositions((prevPositions) => {
+          if (prevPositions.length > 0) {
+            const lastPos = prevPositions[prevPositions.length - 1];
+            const distAdded = calculateDistance(lastPos.lat, lastPos.lon, newPos.lat, newPos.lon);
+            setDistance((prevDist) => prevDist + distAdded);
+          }
+          return [...prevPositions, newPos];
+        });
+      },
+      (error) => {
+        console.error("GPS Error:", error);
+        if(error.code === 1) setErrorMessage("Akses lokasi ditolak iOS/Browser.");
+        else if(error.code === 2) setErrorMessage("Sinyal GPS tidak tersedia.");
+        else if(error.code === 3) setErrorMessage("Pencarian GPS Timeout (lambat).");
+        
+        setTimeout(() => setErrorMessage(''), 5000); 
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
     );
   };
 
-  const handleDownloadSticker = async () => {
-    if (stickerRef.current) {
-      setIsDownloading(true);
-      try {
-        const dataUrl = await toPng(stickerRef.current, { 
-          cacheBust: true, 
-          backgroundColor: 'transparent',
-          pixelRatio: 3 // Resolusi tinggi agar tajam saat ditempel
-        });
-        
-        const link = document.createElement('a');
-        link.download = `RunApp-Sticker-${activity.id}.png`;
-        link.href = dataUrl;
-        link.click();
-      } catch (err) {
-        console.error("Gagal membuat stiker", err);
-        alert("Terjadi kesalahan saat memproses gambar.");
-      } finally {
-        setIsDownloading(false);
-        setIsShareModalOpen(false);
-      }
+  const pauseRecording = () => {
+    setIsPaused(true);
+    setCurrentPace(0); // Set pace ke 0 saat dijeda
+    releaseWakeLock(); // Izinkan layar mati
+    if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
+  };
+
+  const resumeRecording = () => startRecording();
+
+  const stopRecording = () => {
+    setIsRecording(false);
+    setIsPaused(false);
+    releaseWakeLock();
+    if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
+    clearInterval(timerRef.current);
+    
+    if (distance < 0.01 && duration < 10) {
+      alert("Jarak atau waktu terlalu pendek untuk disimpan.");
+      navigate('/mobile');
+      return;
+    }
+
+    if(window.confirm('Akhiri sesi lari ini dan simpan?')) {
+      const runId = Date.now().toString(); 
+      const now = new Date();
+      
+      const totalCalories = Math.round(distance * 65);
+      const totalSteps = Math.round(distance * 1300);
+
+      const newRunData = {
+        id: runId,
+        title: `${getDynamicTitle(now.toISOString())} (${now.toLocaleDateString('id-ID')})`,
+        date: now.toISOString(),
+        distance: distance,
+        movingTime: duration,
+        avgPace: formatAvgPace(), // Simpan Average Pace untuk riwayat keseluruhan
+        calories: totalCalories,
+        steps: totalSteps,
+        positions: positions 
+      };
+
+      const existingRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
+      localStorage.setItem('savedRuns', JSON.stringify([newRunData, ...existingRuns]));
+      
+      navigate(`/mobile/activity/${runId}`);
     }
   };
 
-  if (!activity) {
-    return <div className="min-h-screen flex items-center justify-center text-slate-500">Data lari tidak ditemukan.</div>;
-  }
+  const formatTime = (totalSeconds) => {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    if (h > 0) return `${h < 10 ? '0'+h : h}:${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+    return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+  };
 
-  const runDate = new Date(activity.date);
-  const displayDate = runDate.toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB';
-  const dynamicTitle = `${getDynamicTitle(activity.date)} (${runDate.getDate()}/${runDate.getMonth() + 1}/${runDate.getFullYear()})`;
-  const mapPositions = activity.positions.map(p => [p.lat, p.lon]);
-  const safeMaxElevation = maxElevation > -9000 ? maxElevation : 0;
+  // Fungsi memformat Pace Rata-rata (Untuk Data yang Disimpan)
+  const formatAvgPace = () => {
+    if (distance === 0 || duration === 0) return "00:00";
+    const minutesPerKm = (duration / 60) / distance;
+    const m = Math.floor(minutesPerKm);
+    const s = Math.floor((minutesPerKm - m) * 60);
+    return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+  };
+
+  // Fungsi memformat Pace Real-Time (Untuk Display UI)
+  const formatCurrentPaceUI = () => {
+    if (!currentPace || currentPace === 0 || !isFinite(currentPace)) return "00:00";
+    const m = Math.floor(currentPace / 60);
+    const s = Math.floor(currentPace % 60);
+    return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+  };
+
+  const polylinePositions = positions.map(p => [p.lat, p.lon]);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-10">
+    <div className="h-screen flex flex-col bg-slate-900 relative">
       
-      <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-50/90 backdrop-blur-md z-50 px-5 h-16 flex items-center justify-between border-b border-slate-100">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full text-slate-700 active:bg-slate-200 transition-colors"><ChevronLeft size={24} /></button>
-        <h1 className="text-sm font-semibold text-slate-800">Detail Aktivitas</h1>
-        <button onClick={() => setIsShareModalOpen(true)} className="w-10 h-10 flex items-center justify-center -mr-2 rounded-full text-purple-600 active:bg-purple-50 transition-colors"><Share2 size={20} /></button>
-      </div>
-
-      <div className="max-w-md mx-auto pt-16">
-        
-        {/* LEAFLET MAP TERINTEGRASI */}
-        <div className="w-full h-72 bg-slate-200 relative overflow-hidden flex flex-col items-center justify-end pb-6 rounded-b-[2.5rem] shadow-sm z-0">
-          <MapContainer zoomControl={false} style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0 }}>
-             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-             {mapPositions.length > 1 && <Polyline positions={mapPositions} color="#9333ea" weight={5} lineCap="round" lineJoin="round" />}
-             <FitBounds positions={mapPositions} />
-          </MapContainer>
-          <div className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-full shadow-sm text-xs font-semibold text-slate-700 z-[400] flex items-center gap-1.5 pointer-events-none mb-2">
-            <MapPin size={14} className="text-purple-600"/> Peta Rute Terekam
+      {errorMessage && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[100] w-[90%] max-w-sm">
+          <div className="bg-red-500/90 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3">
+            <AlertCircle size={20} className="shrink-0" />
+            <p className="text-sm font-medium">{errorMessage}</p>
           </div>
-        </div>
-
-        <div className="px-5 py-6">
-          <h2 className="text-2xl font-semibold text-slate-800 mb-1 tracking-tight">{dynamicTitle}</h2>
-          <p className="text-xs font-medium text-slate-400 mb-6">{displayDate}</p>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
-              <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Route size={12}/> Jarak</p>
-              <p className="text-xl font-semibold text-slate-800 tracking-tight">{activity.distance.toFixed(2)} km</p>
-            </div>
-            <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
-              <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Clock size={12}/> Waktu Bergerak</p>
-              <p className="text-xl font-semibold text-slate-800 tracking-tight">{formatTimeStr(activity.movingTime)}</p>
-            </div>
-            <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
-              <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Zap size={12}/> Pace Rata-rata</p>
-              <p className="text-xl font-semibold text-slate-800 tracking-tight">{activity.avgPace}</p>
-            </div>
-            <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
-              <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><TrendingUp size={12}/> Elevasi Maks</p>
-              <p className="text-xl font-semibold text-slate-800 tracking-tight">{safeMaxElevation} m</p>
-            </div>
-            <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
-              <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Flame size={12}/> Kalori</p>
-              <p className="text-xl font-semibold text-slate-800 tracking-tight">{activity.calories || 0} kkal</p>
-            </div>
-            <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
-              <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Footprints size={12}/> Langkah</p>
-              <p className="text-xl font-semibold text-slate-800 tracking-tight">{activity.steps || 0}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-5 space-y-4">
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-50">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <Activity size={16} className="text-purple-600"/> Split Kilometer
-            </h3>
-            
-            <div className="flex text-left text-slate-400 text-[10px] uppercase tracking-wider border-b border-slate-100 pb-2 mb-2">
-              <div className="w-8 font-semibold">KM</div>
-              <div className="w-12 font-semibold">Pace</div>
-              <div className="flex-1"></div>
-              <div className="w-12 font-semibold text-right">Elv</div>
-            </div>
-            
-            <div className="space-y-1 max-h-72 overflow-y-auto pr-2">
-              {splitData.map((split, idx) => {
-                const isFastest = split.paceSec === fastestPace && splitData.length > 1;
-                return (
-                  <div key={idx} className="flex items-center py-2 border-b border-slate-50 last:border-0">
-                    <div className="w-8 font-medium text-sm text-slate-700">{split.km}</div>
-                    <div className={`w-12 font-semibold text-sm ${isFastest ? 'text-purple-600' : 'text-slate-600'}`}>{split.paceStr}</div>
-                    <div className="flex-1 px-2">
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${isFastest ? 'bg-purple-500' : 'bg-slate-300'}`} style={{ width: `${(fastestPace / split.paceSec) * 100}%` }}></div>
-                      </div>
-                    </div>
-                    <div className="w-12 font-medium text-xs text-slate-500 text-right">
-                      {split.elevationChange > 0 ? `+${split.elevationChange}` : split.elevationChange}m
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-50">
-            <h3 className="text-sm font-semibold text-slate-800 mb-6 flex items-center gap-2"><TrendingUp size={16} className="text-orange-400"/> Grafik Ketinggian</h3>
-            <div className="h-32 w-full">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorElevation" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#fb923c" stopOpacity={0.4}/><stop offset="95%" stopColor="#fb923c" stopOpacity={0}/></linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
-                    <XAxis dataKey="km" hide />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'Poppins' }} />
-                    <Area type="monotone" dataKey="elevation" stroke="#fb923c" strokeWidth={2} fillOpacity={1} fill="url(#colorElevation)" />
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '12px' }} formatter={(value) => [`${value}m`, 'Elevasi']} labelFormatter={(label) => `Jarak: ${Number(label).toFixed(2)} km`} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">Data kurang untuk grafik.</div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* --- MODAL SHARE OVERLAY (STAT STICKER) --- */}
-      {isShareModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center p-5">
-          
-          <div className="w-full max-w-sm flex justify-end mb-4">
-            <button onClick={() => setIsShareModalOpen(false)} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform">
-              <X size={20} />
-            </button>
-          </div>
-
-          <p className="text-white/80 text-sm font-medium mb-6 text-center">Preview Stiker Lari<br/><span className="text-xs text-white/50">Latar belakang ini akan menjadi transparan saat disimpan</span></p>
-
-          {/* KONTANER YANG AKAN DIFOTO OLEH HTML-TO-IMAGE */}
-          {/* Background pattern grid transparan hanya untuk preview di web */}
-          <div 
-            className="relative w-full max-w-sm aspect-square bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+CiAgPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAuMCIvPgogIDxwYXRoIGQ9Ik0gMjAgMCBMIDAgMCAwIDIwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPgo8L3N2Zz4=')] flex items-center justify-center rounded-3xl overflow-hidden mb-8"
-          >
-            <div 
-              ref={stickerRef} 
-              className="w-[1080px] h-[1080px] flex flex-col items-center justify-center p-12 transform scale-[0.3] origin-center" // Skala diatur untuk preview, aslinya besar agar resolusi tinggi
-              style={{ background: 'transparent' }}
-            >
-              
-              {/* Gambar Rute (SVG Murni) */}
-              <div className="w-full max-w-[700px] aspect-square flex items-center justify-center drop-shadow-[0_15px_15px_rgba(0,0,0,0.5)]">
-                 {renderSvgRoute(activity.positions)}
-              </div>
-
-              {/* Data Lari dengan Drop Shadow Kuat */}
-              <div className="w-full flex flex-col items-center justify-center text-white drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] mt-12">
-                <h3 className="text-5xl font-bold tracking-widest uppercase opacity-90 mb-4">RunApp</h3>
-                <h1 className="text-[180px] font-black italic leading-none tracking-tighter mb-8">
-                  {activity.distance.toFixed(2)}<span className="text-[80px] ml-4">KM</span>
-                </h1>
-                
-                <div className="flex w-full justify-between items-center px-12 mt-6">
-                  <div className="flex flex-col items-center">
-                    <span className="text-4xl font-bold uppercase tracking-wider opacity-80 mb-2">Waktu</span>
-                    <span className="text-6xl font-black">{formatTimeStr(activity.movingTime)}</span>
-                  </div>
-                  <div className="w-1.5 h-20 bg-white/50 rounded-full"></div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-4xl font-bold uppercase tracking-wider opacity-80 mb-2">Pace</span>
-                    <span className="text-6xl font-black">{activity.avgPace}</span>
-                  </div>
-                  <div className="w-1.5 h-20 bg-white/50 rounded-full"></div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-4xl font-bold uppercase tracking-wider opacity-80 mb-2">Elevasi</span>
-                    <span className="text-6xl font-black">{safeMaxElevation}m</span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          <button 
-            onClick={handleDownloadSticker} 
-            disabled={isDownloading}
-            className={`w-full max-w-sm bg-white text-slate-900 font-bold text-lg py-4 rounded-full flex items-center justify-center gap-3 transition-transform ${isDownloading ? 'opacity-70' : 'active:scale-95 shadow-[0_0_40px_rgba(255,255,255,0.3)]'}`}
-          >
-            {isDownloading ? (
-              <span className="animate-pulse">Menyiapkan Stiker...</span>
-            ) : (
-              <><Download size={24} /> Simpan ke Galeri</>
-            )}
-          </button>
-
         </div>
       )}
 
+      <div className="absolute top-0 w-full z-50 px-5 pt-8 pb-4 flex items-center justify-between bg-gradient-to-b from-slate-900/80 to-transparent">
+        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center bg-white/20 backdrop-blur-md rounded-full text-white active:scale-95">
+          <ChevronLeft size={24} />
+        </button>
+        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full">
+          <MapPin size={14} className="text-purple-400" />
+          <span className="text-xs font-semibold text-white">GPS {currentPosition ? 'Aktif' : 'Mencari...'}</span>
+        </div>
+      </div>
+
+      <div className="flex-1 w-full bg-slate-800 relative z-0">
+        {currentPosition ? (
+          <MapContainer center={currentPosition} zoom={17} zoomControl={false} style={{ height: '100%', width: '100%' }}>
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            {polylinePositions.length > 1 && <Polyline positions={polylinePositions} color="#9333ea" weight={5} lineCap="round" lineJoin="round" />}
+            <Marker position={currentPosition} icon={blueDotIcon} />
+            {(isRecording && !isPaused) && <RecenterAutomatically position={currentPosition} />}
+          </MapContainer>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+            <Activity className="animate-pulse mb-3 text-purple-500" size={32} />
+            <p className="text-sm font-medium">Mencari sinyal GPS...</p>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] relative z-10 pt-8 pb-10 px-6 -mt-6">
+        <div className="grid grid-cols-3 gap-4 text-center mb-8">
+          <div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><RouteIcon size={12}/> Jarak</p>
+            <p className="text-3xl font-bold text-slate-800 tracking-tight">{distance.toFixed(2)}</p>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">km</p>
+          </div>
+          <div className="border-x border-slate-100">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><Clock size={12}/> Waktu</p>
+            <p className="text-3xl font-bold text-slate-800 tracking-tight">{formatTime(duration)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><Activity size={12}/> Pace</p>
+            <p className="text-3xl font-bold text-slate-800 tracking-tight">{formatCurrentPaceUI()}</p>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">/km</p>
+          </div>
+        </div>
+
+        <div className="flex justify-center items-center gap-6">
+          {!isRecording ? (
+             <button onClick={startRecording} disabled={!currentPosition} className={`w-full py-4 rounded-full font-semibold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${currentPosition ? 'bg-purple-600 text-white shadow-purple-200' : 'bg-slate-200 text-slate-400'}`}>
+                <Play size={24} className={currentPosition ? "fill-white" : ""} /> Mulai Lari
+             </button>
+          ) : (
+            <>
+              {isPaused ? (
+                <button onClick={resumeRecording} className="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-green-200 active:scale-95 transition-transform"><Play size={32} className="fill-white" /></button>
+              ) : (
+                <button onClick={pauseRecording} className="w-20 h-20 bg-orange-400 text-white rounded-full flex items-center justify-center shadow-lg shadow-orange-200 active:scale-95 transition-transform"><Pause size={32} className="fill-white" /></button>
+              )}
+              <button onClick={stopRecording} className="w-20 h-20 bg-slate-800 text-white rounded-full flex items-center justify-center shadow-lg shadow-slate-300 active:scale-95 transition-transform"><Square size={28} className="fill-white" /></button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
 
-export default MobileActivityDetail;
+export default MobileRecordRun;

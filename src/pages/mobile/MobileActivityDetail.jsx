@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route, Flame, Footprints } from 'lucide-react';
+import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route, Flame, Footprints, X, Download } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { toPng } from 'html-to-image'; // Tambahan untuk merender HTML ke PNG
 
 const getDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
@@ -37,7 +38,7 @@ const getDynamicTitle = (timestamp) => {
   return 'Lari Malam';
 };
 
-// FitBounds Component untuk otomatis fokus ke rute lari
+// Komponen otomatis fokus rute pada Leaflet
 const FitBounds = ({ positions }) => {
   const map = useMap();
   useEffect(() => {
@@ -58,6 +59,11 @@ const MobileActivityDetail = () => {
   const [chartData, setChartData] = useState([]);
   const [maxElevation, setMaxElevation] = useState(0);
   const [fastestPace, setFastestPace] = useState(9999);
+  
+  // State dan Ref untuk fitur Share Overlay (Stat Sticker)
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const stickerRef = useRef(null);
 
   useEffect(() => {
     const savedRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
@@ -128,6 +134,61 @@ const MobileActivityDetail = () => {
     setFastestPace(bestPace);
   };
 
+  // Algoritma untuk menggambar rute SVG murni tanpa background
+  const renderSvgRoute = (positions) => {
+    if (!positions || positions.length < 2) return null;
+    
+    let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+    positions.forEach(p => {
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lon < minLon) minLon = p.lon;
+      if (p.lon > maxLon) maxLon = p.lon;
+    });
+
+    const latDiff = maxLat - minLat || 0.0001; // Hindari pembagian nol
+    const lonDiff = maxLon - minLon || 0.0001;
+    
+    const width = 400;
+    const height = 400; 
+    
+    const points = positions.map(p => {
+      const x = ((p.lon - minLon) / lonDiff) * (width * 0.8) + (width * 0.1);
+      const y = ((maxLat - p.lat) / latDiff) * (height * 0.8) + (height * 0.1); // Y dibalik karena titik (0,0) di SVG ada di atas
+      return `${x},${y}`;
+    }).join(' ');
+
+    return (
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full drop-shadow-2xl">
+        <polyline points={points} fill="none" stroke="#ffffff" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  };
+
+  const handleDownloadSticker = async () => {
+    if (stickerRef.current) {
+      setIsDownloading(true);
+      try {
+        const dataUrl = await toPng(stickerRef.current, { 
+          cacheBust: true, 
+          backgroundColor: 'transparent',
+          pixelRatio: 3 // Resolusi tinggi agar tajam saat ditempel
+        });
+        
+        const link = document.createElement('a');
+        link.download = `RunApp-Sticker-${activity.id}.png`;
+        link.href = dataUrl;
+        link.click();
+      } catch (err) {
+        console.error("Gagal membuat stiker", err);
+        alert("Terjadi kesalahan saat memproses gambar.");
+      } finally {
+        setIsDownloading(false);
+        setIsShareModalOpen(false);
+      }
+    }
+  };
+
   if (!activity) {
     return <div className="min-h-screen flex items-center justify-center text-slate-500">Data lari tidak ditemukan.</div>;
   }
@@ -136,6 +197,7 @@ const MobileActivityDetail = () => {
   const displayDate = runDate.toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB';
   const dynamicTitle = `${getDynamicTitle(activity.date)} (${runDate.getDate()}/${runDate.getMonth() + 1}/${runDate.getFullYear()})`;
   const mapPositions = activity.positions.map(p => [p.lat, p.lon]);
+  const safeMaxElevation = maxElevation > -9000 ? maxElevation : 0;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
@@ -143,7 +205,7 @@ const MobileActivityDetail = () => {
       <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-50/90 backdrop-blur-md z-50 px-5 h-16 flex items-center justify-between border-b border-slate-100">
         <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full text-slate-700 active:bg-slate-200 transition-colors"><ChevronLeft size={24} /></button>
         <h1 className="text-sm font-semibold text-slate-800">Detail Aktivitas</h1>
-        <button className="w-10 h-10 flex items-center justify-center -mr-2 rounded-full text-purple-600 active:bg-purple-50 transition-colors"><Share2 size={20} /></button>
+        <button onClick={() => setIsShareModalOpen(true)} className="w-10 h-10 flex items-center justify-center -mr-2 rounded-full text-purple-600 active:bg-purple-50 transition-colors"><Share2 size={20} /></button>
       </div>
 
       <div className="max-w-md mx-auto pt-16">
@@ -179,7 +241,7 @@ const MobileActivityDetail = () => {
             </div>
             <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
               <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><TrendingUp size={12}/> Elevasi Maks</p>
-              <p className="text-xl font-semibold text-slate-800 tracking-tight">{maxElevation > -9000 ? maxElevation : 0} m</p>
+              <p className="text-xl font-semibold text-slate-800 tracking-tight">{safeMaxElevation} m</p>
             </div>
             <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
               <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Flame size={12}/> Kalori</p>
@@ -247,9 +309,80 @@ const MobileActivityDetail = () => {
               )}
             </div>
           </div>
-
         </div>
       </div>
+
+      {/* --- MODAL SHARE OVERLAY (STAT STICKER) --- */}
+      {isShareModalOpen && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center p-5">
+          
+          <div className="w-full max-w-sm flex justify-end mb-4">
+            <button onClick={() => setIsShareModalOpen(false)} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform">
+              <X size={20} />
+            </button>
+          </div>
+
+          <p className="text-white/80 text-sm font-medium mb-6 text-center">Preview Stiker Lari<br/><span className="text-xs text-white/50">Latar belakang ini akan menjadi transparan saat disimpan</span></p>
+
+          {/* KONTANER YANG AKAN DIFOTO OLEH HTML-TO-IMAGE */}
+          {/* Background pattern grid transparan hanya untuk preview di web */}
+          <div 
+            className="relative w-full max-w-sm aspect-square bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+CiAgPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAuMCIvPgogIDxwYXRoIGQ9Ik0gMjAgMCBMIDAgMCAwIDIwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPgo8L3N2Zz4=')] flex items-center justify-center rounded-3xl overflow-hidden mb-8"
+          >
+            <div 
+              ref={stickerRef} 
+              className="w-[1080px] h-[1080px] flex flex-col items-center justify-center p-12 transform scale-[0.3] origin-center" // Skala diatur untuk preview, aslinya besar agar resolusi tinggi
+              style={{ background: 'transparent' }}
+            >
+              
+              {/* Gambar Rute (SVG Murni) */}
+              <div className="w-full max-w-[700px] aspect-square flex items-center justify-center drop-shadow-[0_15px_15px_rgba(0,0,0,0.5)]">
+                 {renderSvgRoute(activity.positions)}
+              </div>
+
+              {/* Data Lari dengan Drop Shadow Kuat */}
+              <div className="w-full flex flex-col items-center justify-center text-white drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] mt-12">
+                <h3 className="text-5xl font-bold tracking-widest uppercase opacity-90 mb-4">RunApp</h3>
+                <h1 className="text-[180px] font-black italic leading-none tracking-tighter mb-8">
+                  {activity.distance.toFixed(2)}<span className="text-[80px] ml-4">KM</span>
+                </h1>
+                
+                <div className="flex w-full justify-between items-center px-12 mt-6">
+                  <div className="flex flex-col items-center">
+                    <span className="text-4xl font-bold uppercase tracking-wider opacity-80 mb-2">Waktu</span>
+                    <span className="text-6xl font-black">{formatTimeStr(activity.movingTime)}</span>
+                  </div>
+                  <div className="w-1.5 h-20 bg-white/50 rounded-full"></div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-4xl font-bold uppercase tracking-wider opacity-80 mb-2">Pace</span>
+                    <span className="text-6xl font-black">{activity.avgPace}</span>
+                  </div>
+                  <div className="w-1.5 h-20 bg-white/50 rounded-full"></div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-4xl font-bold uppercase tracking-wider opacity-80 mb-2">Elevasi</span>
+                    <span className="text-6xl font-black">{safeMaxElevation}m</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <button 
+            onClick={handleDownloadSticker} 
+            disabled={isDownloading}
+            className={`w-full max-w-sm bg-white text-slate-900 font-bold text-lg py-4 rounded-full flex items-center justify-center gap-3 transition-transform ${isDownloading ? 'opacity-70' : 'active:scale-95 shadow-[0_0_40px_rgba(255,255,255,0.3)]'}`}
+          >
+            {isDownloading ? (
+              <span className="animate-pulse">Menyiapkan Stiker...</span>
+            ) : (
+              <><Download size={24} /> Simpan ke Galeri</>
+            )}
+          </button>
+
+        </div>
+      )}
+
     </div>
   );
 };
