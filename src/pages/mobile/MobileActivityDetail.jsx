@@ -59,10 +59,9 @@ const MobileActivityDetail = () => {
   const [maxElevation, setMaxElevation] = useState(0);
   const [fastestPace, setFastestPace] = useState(9999);
   
-  // State Share Modal
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [activeSticker, setActiveSticker] = useState(0); // 0: Utama, 1: Split, 2: Elevasi
+  const [activeSticker, setActiveSticker] = useState(0); 
   const stickerRef = useRef(null);
 
   useEffect(() => {
@@ -125,7 +124,6 @@ const MobileActivityDetail = () => {
     setFastestPace(bestPace);
   };
 
-  // Garis SVG Rute dengan Gradasi Warna
   const renderSvgRoute = (positions) => {
     if (!positions || positions.length < 2) return null;
     let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
@@ -167,7 +165,8 @@ const MobileActivityDetail = () => {
         const dataUrl = await toPng(stickerRef.current, { 
           cacheBust: true, 
           backgroundColor: 'transparent',
-          pixelRatio: 3 
+          pixelRatio: 3, 
+          skipAutoScale: true
         });
         const link = document.createElement('a');
         link.download = `RunApp-${activeSticker === 0 ? 'Route' : activeSticker === 1 ? 'Splits' : 'Elevation'}-${activity.id}.png`;
@@ -196,7 +195,6 @@ const MobileActivityDetail = () => {
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
       
-      {/* HEADER UTAMA */}
       <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-50/90 backdrop-blur-md z-50 px-5 h-16 flex items-center justify-between border-b border-slate-100">
         <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full text-slate-700 active:bg-slate-200 transition-colors"><ChevronLeft size={24} /></button>
         <h1 className="text-sm font-semibold text-slate-800">Detail Aktivitas</h1>
@@ -205,7 +203,6 @@ const MobileActivityDetail = () => {
 
       <div className="max-w-md mx-auto pt-16">
         
-        {/* LEAFLET MAP UI */}
         <div className="w-full h-72 bg-slate-200 relative overflow-hidden flex flex-col items-center justify-end pb-6 rounded-b-[2.5rem] shadow-sm z-0">
           <MapContainer zoomControl={false} style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0 }}>
              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -214,7 +211,6 @@ const MobileActivityDetail = () => {
           </MapContainer>
         </div>
 
-        {/* DATA UI BAWAH PETA */}
         <div className="px-5 py-6">
           <h2 className="text-2xl font-semibold text-slate-800 mb-1 tracking-tight">{dynamicTitle}</h2>
           <p className="text-xs font-medium text-slate-400 mb-6">{displayDate}</p>
@@ -240,7 +236,6 @@ const MobileActivityDetail = () => {
         </div>
       </div>
 
-      {/* --- MODAL SHARE OVERLAY (STAT STICKER) --- */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-5">
           
@@ -251,17 +246,16 @@ const MobileActivityDetail = () => {
             </button>
           </div>
 
-          {/* KONTANER CAROUSEL (KIRI-KANAN) */}
           <div className="flex items-center justify-between w-full max-w-[420px] mb-8">
-            <button onClick={() => setActiveSticker((prev) => (prev > 0 ? prev - 1 : 2))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90">
+            <button onClick={() => setActiveSticker((prev) => (prev > 0 ? prev - 1 : 2))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90 shrink-0">
               <ChevronLeft size={32} />
             </button>
 
-            {/* PREVIEW CONTAINER */}
-            <div className="relative w-64 h-64 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+CiAgPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAuMCIvPgogIDxwYXRoIGQ9Ik0gMjAgMCBMIDAgMCAwIDIwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPgo8L3N2Zz4=')] flex items-center justify-center rounded-[2rem] overflow-hidden border-2 border-white/10 shadow-2xl">
+            {/* PREVIEW CONTAINER: Ditambahkan hide-scrollbar dan items-start untuk mengatasi gambar sangat panjang */}
+            <div className="relative w-64 h-64 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+CiAgPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAuMCIvPgogIDxwYXRoIGQ9Ik0gMjAgMCBMIDAgMCAwIDIwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPgo8L3N2Zz4=')] flex justify-center rounded-[2rem] border-2 border-white/10 shadow-2xl overflow-hidden items-start">
               <div 
                 ref={stickerRef} 
-                className="w-[1080px] h-[1080px] flex flex-col items-center justify-center p-12 transform scale-[0.237] origin-center" 
+                className="w-[1080px] min-h-[1080px] h-fit flex flex-col items-center justify-center p-12 transform scale-[0.237] origin-top" 
                 style={{ background: 'transparent' }}
               >
                 
@@ -272,18 +266,13 @@ const MobileActivityDetail = () => {
                        {renderSvgRoute(activity.positions)}
                     </div>
                     <div className="w-full flex flex-col items-center justify-center text-white drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] mt-4">
-                      {/* Judul Aplikasi Modern */}
                       <div className="flex items-center gap-3 mb-6 bg-white/10 px-8 py-3 rounded-full backdrop-blur-sm border border-white/20">
                         <Flame className="text-orange-400" size={32} fill="currentColor" />
                         <h3 className="text-3xl font-bold tracking-widest uppercase">RunApp</h3>
                       </div>
-                      
-                      {/* Jarak Utama */}
                       <h1 className="text-[200px] font-black italic leading-none tracking-tighter mb-10">
                         {activity.distance.toFixed(2)}<span className="text-[70px] ml-4 text-white/80">KM</span>
                       </h1>
-                      
-                      {/* Grid Data Bawah */}
                       <div className="flex w-full justify-center gap-16 items-center px-12 mt-4">
                         <div className="flex flex-col items-center">
                           <span className="text-3xl font-bold uppercase tracking-widest text-purple-300 mb-2">Waktu</span>
@@ -299,7 +288,7 @@ const MobileActivityDetail = () => {
                   </>
                 )}
 
-                {/* --- STIKER 2: TABEL SPLIT --- */}
+                {/* --- STIKER 2: TABEL SPLIT (MENAMPILKAN SEMUA DATA) --- */}
                 {activeSticker === 1 && (
                   <div className="w-full h-full flex flex-col justify-center text-white drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] p-8">
                     <div className="flex items-center gap-4 mb-16">
@@ -314,25 +303,30 @@ const MobileActivityDetail = () => {
                       <div className="w-32 text-right">Elv</div>
                     </div>
                     
-                    <div className="space-y-6 w-full">
-                      {splitData.slice(0, 7).map((split, idx) => {
+                    <div className="space-y-6 w-full pb-10">
+                      {/* Fungsi map ini akan me-render SEMUA data split berapapun jumlahnya */}
+                      {splitData.map((split, idx) => {
                         const isFastest = split.paceSec === fastestPace && splitData.length > 1;
                         return (
                           <div key={idx} className="flex items-center py-4">
                             <div className="w-32 font-bold text-5xl">{split.km}</div>
                             <div className={`w-48 font-black text-5xl ${isFastest ? 'text-purple-400' : 'text-white'}`}>{split.paceStr}</div>
-                            <div className="flex-1 px-8">
-                              <div className="h-6 w-full bg-white/20 rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full ${isFastest ? 'bg-purple-500' : 'bg-white'}`} style={{ width: `${(fastestPace / split.paceSec) * 100}%` }}></div>
-                              </div>
+                            
+                            {/* Metode Absolute untuk Progress Bar Tahan Banting di html-to-image */}
+                            <div className="flex-1 px-8 relative h-6">
+                              <div className="absolute inset-0 bg-white/20 rounded-full"></div>
+                              <div 
+                                className={`absolute inset-y-0 left-0 rounded-full ${isFastest ? 'bg-purple-500' : 'bg-white'}`} 
+                                style={{ width: `${(fastestPace / split.paceSec) * 100}%` }}
+                              ></div>
                             </div>
+
                             <div className="w-32 font-bold text-4xl text-white/80 text-right">
                               {split.elevationChange > 0 ? `+${split.elevationChange}` : split.elevationChange}m
                             </div>
                           </div>
                         );
                       })}
-                      {splitData.length > 7 && <div className="text-center text-3xl font-bold text-white/50 mt-8">...dan {splitData.length - 7} kilometer lainnya</div>}
                     </div>
                   </div>
                 )}
@@ -348,8 +342,6 @@ const MobileActivityDetail = () => {
                       <span className="text-[120px] font-black">{safeMaxElevation}</span>
                       <span className="text-5xl font-bold text-white/70">Meter Maksimal</span>
                     </div>
-
-                    {/* Menggunakan dimensi fix untuk export gambar */}
                     <div className="w-full h-[500px]">
                       {chartData.length > 0 ? (
                         <AreaChart width={900} height={500} data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
@@ -371,7 +363,7 @@ const MobileActivityDetail = () => {
               </div>
             </div>
 
-            <button onClick={() => setActiveSticker((prev) => (prev < 2 ? prev + 1 : 0))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90">
+            <button onClick={() => setActiveSticker((prev) => (prev < 2 ? prev + 1 : 0))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90 shrink-0">
               <ChevronRight size={32} />
             </button>
           </div>
