@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route, Flame, Footprints, X, Download, ChevronRight } from 'lucide-react';
+import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route, Flame, X, Download, ChevronRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toPng } from 'html-to-image';
 
@@ -195,6 +195,7 @@ const MobileActivityDetail = () => {
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
       
+      {/* HEADER HALAMAN */}
       <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-50/90 backdrop-blur-md z-50 px-5 h-16 flex items-center justify-between border-b border-slate-100">
         <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full text-slate-700 active:bg-slate-200 transition-colors"><ChevronLeft size={24} /></button>
         <h1 className="text-sm font-semibold text-slate-800">Detail Aktivitas</h1>
@@ -203,6 +204,7 @@ const MobileActivityDetail = () => {
 
       <div className="max-w-md mx-auto pt-16">
         
+        {/* PETA UTAMA LEAFLET */}
         <div className="w-full h-72 bg-slate-200 relative overflow-hidden flex flex-col items-center justify-end pb-6 rounded-b-[2.5rem] shadow-sm z-0">
           <MapContainer zoomControl={false} style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0 }}>
              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -215,7 +217,7 @@ const MobileActivityDetail = () => {
           <h2 className="text-2xl font-semibold text-slate-800 mb-1 tracking-tight">{dynamicTitle}</h2>
           <p className="text-xs font-medium text-slate-400 mb-6">{displayDate}</p>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="p-4 bg-white rounded-3xl shadow-sm border border-slate-50">
               <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center gap-1.5"><Route size={12}/> Jarak</p>
               <p className="text-xl font-semibold text-slate-800 tracking-tight">{activity.distance.toFixed(2)} km</p>
@@ -234,8 +236,71 @@ const MobileActivityDetail = () => {
             </div>
           </div>
         </div>
+
+        {/* --- BAGIAN YANG SEMPAT HILANG (SPLIT & GRAFIK DI UI UTAMA) --- */}
+        <div className="px-5 space-y-4 pb-8">
+          
+          {/* TABEL SPLIT (UI UTAMA) */}
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-50">
+            <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+              <Activity size={16} className="text-purple-600"/> Split Kilometer
+            </h3>
+            
+            <div className="flex text-left text-slate-400 text-[10px] uppercase tracking-wider border-b border-slate-100 pb-2 mb-2">
+              <div className="w-8 font-semibold">KM</div>
+              <div className="w-12 font-semibold">Pace</div>
+              <div className="flex-1"></div>
+              <div className="w-12 font-semibold text-right">Elv</div>
+            </div>
+            
+            <div className="space-y-1 max-h-72 overflow-y-auto pr-2">
+              {splitData.map((split, idx) => {
+                const isFastest = split.paceSec === fastestPace && splitData.length > 1;
+                return (
+                  <div key={idx} className="flex items-center py-2 border-b border-slate-50 last:border-0">
+                    <div className="w-8 font-medium text-sm text-slate-700">{split.km}</div>
+                    <div className={`w-12 font-semibold text-sm ${isFastest ? 'text-purple-600' : 'text-slate-600'}`}>{split.paceStr}</div>
+                    <div className="flex-1 px-2">
+                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${isFastest ? 'bg-purple-500' : 'bg-slate-300'}`} style={{ width: `${(fastestPace / split.paceSec) * 100}%` }}></div>
+                      </div>
+                    </div>
+                    <div className="w-12 font-medium text-xs text-slate-500 text-right">
+                      {split.elevationChange > 0 ? `+${split.elevationChange}` : split.elevationChange}m
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* GRAFIK ELEVASI (UI UTAMA) */}
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-50">
+            <h3 className="text-sm font-semibold text-slate-800 mb-6 flex items-center gap-2"><TrendingUp size={16} className="text-orange-400"/> Grafik Ketinggian</h3>
+            <div className="h-32 w-full">
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorElevationMain" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#fb923c" stopOpacity={0.4}/><stop offset="95%" stopColor="#fb923c" stopOpacity={0}/></linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
+                    <XAxis dataKey="km" hide />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'Poppins' }} />
+                    <Area type="monotone" dataKey="elevation" stroke="#fb923c" strokeWidth={2} fillOpacity={1} fill="url(#colorElevationMain)" />
+                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '12px' }} formatter={(value) => [`${value}m`, 'Elevasi']} labelFormatter={(label) => `Jarak: ${Number(label).toFixed(2)} km`} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">Data kurang untuk grafik.</div>
+              )}
+            </div>
+          </div>
+
+        </div>
       </div>
 
+      {/* --- MODAL SHARE OVERLAY (STAT STICKER) --- */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-5">
           
@@ -251,7 +316,7 @@ const MobileActivityDetail = () => {
               <ChevronLeft size={32} />
             </button>
 
-            {/* PREVIEW CONTAINER: Ditambahkan hide-scrollbar dan items-start untuk mengatasi gambar sangat panjang */}
+            {/* PREVIEW CONTAINER STIKER */}
             <div className="relative w-64 h-64 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+CiAgPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAuMCIvPgogIDxwYXRoIGQ9Ik0gMjAgMCBMIDAgMCAwIDIwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPgo8L3N2Zz4=')] flex justify-center rounded-[2rem] border-2 border-white/10 shadow-2xl overflow-hidden items-start">
               <div 
                 ref={stickerRef} 
@@ -304,15 +369,12 @@ const MobileActivityDetail = () => {
                     </div>
                     
                     <div className="space-y-6 w-full pb-10">
-                      {/* Fungsi map ini akan me-render SEMUA data split berapapun jumlahnya */}
                       {splitData.map((split, idx) => {
                         const isFastest = split.paceSec === fastestPace && splitData.length > 1;
                         return (
                           <div key={idx} className="flex items-center py-4">
                             <div className="w-32 font-bold text-5xl">{split.km}</div>
                             <div className={`w-48 font-black text-5xl ${isFastest ? 'text-purple-400' : 'text-white'}`}>{split.paceStr}</div>
-                            
-                            {/* Metode Absolute untuk Progress Bar Tahan Banting di html-to-image */}
                             <div className="flex-1 px-8 relative h-6">
                               <div className="absolute inset-0 bg-white/20 rounded-full"></div>
                               <div 
@@ -320,7 +382,6 @@ const MobileActivityDetail = () => {
                                 style={{ width: `${(fastestPace / split.paceSec) * 100}%` }}
                               ></div>
                             </div>
-
                             <div className="w-32 font-bold text-4xl text-white/80 text-right">
                               {split.elevationChange > 0 ? `+${split.elevationChange}` : split.elevationChange}m
                             </div>
