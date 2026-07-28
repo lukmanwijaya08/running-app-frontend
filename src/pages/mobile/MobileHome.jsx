@@ -23,7 +23,6 @@ const MobileHome = () => {
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const [recentActivities, setRecentActivities] = useState([]);
   
-  // State untuk Data Pribadi & Statistik
   const [userData, setUserData] = useState({ name: 'Lukman', weeklyTarget: 30 });
   const [weeklyStats, setWeeklyStats] = useState({ distance: 0, duration: 0, count: 0 });
   const [todayStats, setTodayStats] = useState({ distance: 0, duration: 0, calories: 0, steps: 0 });
@@ -31,7 +30,6 @@ const MobileHome = () => {
 
   const profilePhoto = "https://i.pravatar.cc/150?img=11";
 
-  // Target Harian Statis (Misal target: 10000 langkah)
   const targetSteps = 10000;
   const progressPercentage = todayStats.steps > 0 ? (todayStats.steps / targetSteps) * 100 : 0;
   
@@ -40,7 +38,6 @@ const MobileHome = () => {
   const strokeDashoffset = circumference - (Math.min(animatedProgress, 100) / 100) * circumference;
 
   useEffect(() => {
-    // 1. Ambil Profil User
     const savedProfile = JSON.parse(localStorage.getItem('userProfile'));
     if (savedProfile) {
       setUserData({
@@ -49,31 +46,39 @@ const MobileHome = () => {
       });
     }
 
-    // 2. Ambil Riwayat Lari
     const savedRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
     setRecentActivities(savedRuns);
 
-    // 3. Kalkulasi Waktu & Statistik
+    // --- LOGIKA BATAS MINGGU (RESET OTOMATIS) ---
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
     
-    // Hitung awal minggu (Senin)
+    // Cari tahu jarak hari ini ke hari Senin (0 = Minggu, 1 = Senin, dst)
+    const currentDay = today.getDay(); 
+    const distanceToMonday = currentDay === 0 ? 6 : currentDay - 1;
+    
+    // Tetapkan Awal Minggu (Senin, 00:00:00)
     const startOfWeek = new Date(today);
-    const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-    startOfWeek.setDate(diff);
+    startOfWeek.setDate(today.getDate() - distanceToMonday);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // Tetapkan Akhir Minggu (Minggu, 23:59:59)
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
 
     let wDist = 0, wDur = 0, wCount = 0;
     let tDist = 0, tDur = 0, tCal = 0, tSteps = 0;
 
     savedRuns.forEach(run => {
       const runDate = new Date(run.date);
-      // Analitik Mingguan
-      if (runDate >= startOfWeek) {
+      
+      // Analitik Mingguan: Rentang Senin-Minggu MINGGU INI
+      if (runDate >= startOfWeek && runDate <= endOfWeek) {
         wDist += run.distance || 0;
         wDur += run.movingTime || 0;
         wCount++;
       }
+      
       // Analitik Harian
       if (runDate.toDateString() === today.toDateString()) {
         tDist += run.distance || 0;
@@ -86,7 +91,7 @@ const MobileHome = () => {
     setWeeklyStats({ distance: wDist, duration: wDur, count: wCount });
     setTodayStats({ distance: tDist, duration: tDur, calories: tCal, steps: tSteps });
 
-    // 4. Kalkulasi Kalender Konsistensi (7 Hari Terakhir)
+    // --- KALKULASI KALENDER KONSISTENSI & TOOLTIP ---
     const generateConsistency = () => {
       const days = [];
       for (let i = 6; i >= 0; i--) {
@@ -94,30 +99,43 @@ const MobileHome = () => {
         d.setDate(d.getDate() - i);
         d.setHours(0, 0, 0, 0);
         
-        // Ambil inisial hari (S, S, R, K, J, S, M)
         const dayName = d.toLocaleDateString('id-ID', { weekday: 'short' }).charAt(0);
         
-        // Cek apakah ada lari di hari tersebut
-        const hasRun = savedRuns.some(run => {
+        let dailyDist = 0;
+        let dailyDur = 0;
+        let hasRun = false;
+
+        savedRuns.forEach(run => {
           const runDate = new Date(run.date);
           runDate.setHours(0, 0, 0, 0);
-          return runDate.getTime() === d.getTime();
+          if (runDate.getTime() === d.getTime()) {
+            hasRun = true;
+            dailyDist += run.distance || 0;
+            dailyDur += run.movingTime || 0;
+          }
         });
 
-        days.push({ day: dayName, date: d.getDate(), active: hasRun, isToday: i === 0 });
+        days.push({ 
+          day: dayName, 
+          date: d.getDate(), 
+          active: hasRun, 
+          isToday: i === 0,
+          distance: dailyDist, 
+          duration: dailyDur   
+        });
       }
       return days;
     };
 
     setConsistencyDays(generateConsistency());
 
-    // 5. Animasi Chart
     const timer = setTimeout(() => setAnimatedProgress(progressPercentage), 300);
     return () => clearTimeout(timer);
   }, [progressPercentage]);
 
   return (
-    <div className="pt-8 px-5">
+    // DIKEMBALIKAN KE LIGHT MODE: bg-slate-50
+    <div className="pt-8 px-5 min-h-screen bg-slate-50 pb-24">
       
       {/* HEADER */}
       <div className="flex items-center justify-between mb-8">
@@ -157,7 +175,7 @@ const MobileHome = () => {
           </div>
         </div>
 
-        {/* KONSISTENSI 7 HARI TERAKHIR (DINAMIS) */}
+        {/* KONSISTENSI 7 HARI TERAKHIR */}
         <div className="min-w-[85%] snap-center shrink-0 bg-white rounded-3xl p-6 shadow-sm flex items-center gap-5 border border-slate-50">
           <div className="relative w-20 h-20 flex-shrink-0">
             <svg className="w-full h-full transform -rotate-90">
@@ -175,18 +193,28 @@ const MobileHome = () => {
             </div>
             <div className="flex justify-between items-center w-full">
               {consistencyDays.slice(2, 7).map((d, i) => (
-                <div key={i} className="flex flex-col items-center gap-1.5">
+                <div key={i} className="flex flex-col items-center gap-1.5 relative group cursor-pointer">
                   <span className={`text-[9px] font-medium ${d.isToday ? 'text-purple-600' : 'text-slate-400'}`}>{d.day}</span>
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium transition-colors ${d.active ? 'bg-purple-600 text-white shadow-md shadow-purple-200' : (d.isToday ? 'border border-purple-200 text-purple-600 bg-purple-50' : 'text-slate-500 bg-slate-50')}`}>
+                  
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium transition-all ${d.active ? 'bg-purple-600 text-white shadow-md shadow-purple-200' : (d.isToday ? 'border border-purple-200 text-purple-600 bg-purple-50' : 'text-slate-500 bg-slate-50')}`}>
                     {d.date}
                   </div>
+
+                  {/* TOOLTIP: Dipertahankan dengan warna gelap (slate-800) agar menonjol di Light Mode */}
+                  {d.active && (
+                    <div className="absolute bottom-full mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-active:opacity-100 group-active:visible transition-all duration-200 flex flex-col items-center bg-slate-800 text-white p-2 rounded-xl shadow-xl whitespace-nowrap z-50 border border-slate-700 pointer-events-none">
+                      <span className="text-xs font-bold text-white mb-0.5">{d.distance.toFixed(1)} km</span>
+                      <span className="text-[10px] text-slate-300 font-medium flex items-center gap-1"><Clock size={10}/> {formatTimeStr(d.duration)}</span>
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* TARGET MINGGUAN (DINAMIS DARI PROFIL) */}
+        {/* TARGET MINGGUAN */}
         <div className="min-w-[85%] snap-center shrink-0 bg-purple-600 rounded-3xl p-6 shadow-md shadow-purple-200 text-white flex flex-col justify-between relative overflow-hidden">
           <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
           <div className="flex items-center gap-2 mb-4 relative z-10">
@@ -248,7 +276,7 @@ const MobileHome = () => {
 
         <div className="space-y-4">
           {recentActivities.length === 0 ? (
-            <div className="bg-white rounded-3xl p-6 text-center text-slate-400 text-sm border border-slate-50">Belum ada aktivitas terekam.</div>
+            <div className="bg-white rounded-3xl p-6 text-center text-slate-400 text-sm border border-slate-50 shadow-sm">Belum ada aktivitas terekam.</div>
           ) : (
             recentActivities.slice(0, 3).map((activity) => {
               const runDate = new Date(activity.date);
