@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, UploadCloud, Map, Clock, CheckCircle, Zap, Calendar, TrendingUp, Activity, AlertCircle } from 'lucide-react';
 
-// Fungsi Helper Kalkulasi Jarak Haversine
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; 
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -11,7 +10,6 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
 };
 
-// Fungsi Helper Format Pace
 const formatPace = (distance, durationSec) => {
   if (!distance || !durationSec || distance <= 0) return "00:00";
   const minutesPerKm = (durationSec / 60) / distance;
@@ -38,14 +36,12 @@ const MobileAddActivity = () => {
     gpxFile: null 
   });
 
-  // State untuk form manual yang dipecah
   const [distanceKm, setDistanceKm] = useState('');
   const [distanceM, setDistanceM] = useState('');
   const [timeH, setTimeH] = useState('');
   const [timeM, setTimeM] = useState('');
   const [timeS, setTimeS] = useState('');
 
-  // Efek untuk mengisi form secara otomatis jika ada data dari MobileRecordRun
   useEffect(() => {
     if (recordedDistance !== undefined && recordedDuration !== undefined) {
       setInputType('manual');
@@ -57,7 +53,7 @@ const MobileAddActivity = () => {
 
       const h = Math.floor(recordedDuration / 3600);
       const m = Math.floor((recordedDuration % 3600) / 60);
-      const s = Math.floor(recordedDuration % 60);
+      const s = recordedDuration % 60;
       setTimeH(h > 0 ? h : '');
       setTimeM(m < 10 ? `0${m}` : m);
       setTimeS(s < 10 ? `0${s}` : s);
@@ -66,7 +62,6 @@ const MobileAddActivity = () => {
       now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
       setFormData(prev => ({ ...prev, date: now.toISOString().slice(0, 16) }));
     } else {
-      // Set default date to now untuk input manual baru
       const now = new Date();
       now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
       setFormData(prev => ({ ...prev, date: now.toISOString().slice(0, 16) }));
@@ -75,26 +70,26 @@ const MobileAddActivity = () => {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
   
-  // FUNGSI UTAMA: MENYIMPAN KE LOCALSTORAGE (Database Sementara)
   const saveToHistory = (runData) => {
     const existingRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
     localStorage.setItem('savedRuns', JSON.stringify([runData, ...existingRuns]));
-    navigate(`/mobile/activity/${runData.id}`);
+    // Mengarahkan ke halaman detail dengan membawa state penanda arah kembali ke Home/Activities
+    navigate(`/mobile/activity/${runData.id}`, { state: { fromAdd: true } });
   };
 
   const handleSubmit = (e) => { 
     e.preventDefault(); 
     setErrorMessage('');
 
-    if (!formData.title.trim()) {
-      setErrorMessage("Judul aktivitas tidak boleh kosong.");
-      return;
-    }
-
     const runId = Date.now().toString();
 
-    // 1. JIKA USER MENGGUNAKAN INPUT MANUAL
+    // 1. INPUT MANUAL
     if (inputType === 'manual') {
+      if (!formData.title.trim()) {
+        setErrorMessage("Judul aktivitas tidak boleh kosong.");
+        return;
+      }
+
       const distStr = `${distanceKm || 0}.${distanceM || 0}`;
       const totalDistance = parseFloat(distStr);
       const totalDuration = (parseInt(timeH || 0) * 3600) + (parseInt(timeM || 0) * 60) + parseInt(timeS || 0);
@@ -114,14 +109,13 @@ const MobileAddActivity = () => {
         avgPace: formatPace(totalDistance, totalDuration),
         calories: Math.round(totalDistance * 65),
         steps: Math.round(totalDistance * 1300),
-        // Gunakan posisi rekaman GPS jika ada, jika tidak kosongkan
         positions: recordedPositions || [] 
       };
 
       saveToHistory(newRunData);
     } 
     
-    // 2. JIKA USER UPLOAD FILE GPX
+    // 2. UPLOAD GPX
     else if (inputType === 'gpx') {
       if (!formData.gpxFile) {
         setErrorMessage("Silakan pilih file GPX terlebih dahulu.");
@@ -166,12 +160,17 @@ const MobileAddActivity = () => {
             }
           }
 
-          const totalGpxDuration = Math.max(0, (lastTime - firstTime) / 1000); // dalam detik
+          const totalGpxDuration = Math.max(0, (lastTime - firstTime) / 1000); 
+
+          // REVISI: Mengambil nama file GPX sebagai judul default jika input kosong, dan menyimpan deskripsi
+          const fileTitle = formData.title.trim() !== '' 
+            ? formData.title 
+            : formData.gpxFile.name.replace(/\.[^/.]+$/, ""); // Hapus ekstensi file
 
           const newRunData = {
             id: runId,
-            title: formData.title,
-            description: formData.description,
+            title: fileTitle,
+            description: formData.description || '', // Menyimpan deskripsi
             date: new Date(firstTime).toISOString(),
             distance: totalGpxDistance,
             movingTime: totalGpxDuration,
@@ -200,8 +199,6 @@ const MobileAddActivity = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10 relative">
-      
-      {/* Pesan Error Floating */}
       {errorMessage && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[100] w-[90%] max-w-sm">
           <div className="bg-red-500/90 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3">
@@ -212,7 +209,7 @@ const MobileAddActivity = () => {
       )}
 
       <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-50/90 backdrop-blur-md z-50 px-5 h-16 flex items-center justify-between">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full text-slate-700 active:bg-slate-200 transition-colors">
+        <button onClick={() => navigate('/mobile')} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full text-slate-700 active:bg-slate-200 transition-colors">
           <ChevronLeft size={24} />
         </button>
         <h1 className="text-base font-semibold text-slate-800">Simpan Aktivitas</h1>
@@ -220,8 +217,6 @@ const MobileAddActivity = () => {
       </div>
 
       <div className="pt-24 px-5 max-w-md mx-auto">
-        
-        {/* TAB PILIHAN INPUT */}
         <div className="bg-slate-200/60 p-1 rounded-full flex mb-8">
           <button type="button" onClick={() => setInputType('manual')} className={`flex-1 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${inputType === 'manual' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
             Input Manual
@@ -232,12 +227,10 @@ const MobileAddActivity = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* JUDUL DAN DESKRIPSI UTAMA */}
           <div className="space-y-4 bg-white p-5 rounded-3xl shadow-sm border border-slate-50">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-500 ml-1">Judul Aktivitas</label>
-              <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Misal: Lari Pagi Sudirman" className="w-full bg-slate-50 px-4 py-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-purple-100 transition-all font-medium text-slate-800 text-sm shadow-inner" required />
+              <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder={inputType === 'gpx' ? "Opsional (Default dari nama file)" : "Misal: Lari Pagi Sudirman"} className="w-full bg-slate-50 px-4 py-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-purple-100 transition-all font-medium text-slate-800 text-sm shadow-inner" required={inputType === 'manual'} />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-500 ml-1">Deskripsi (Opsional)</label>
@@ -245,7 +238,6 @@ const MobileAddActivity = () => {
             </div>
           </div>
 
-          {/* AREA UPLOAD GPX */}
           {inputType === 'gpx' && (
             <div onClick={() => fileInputRef.current.click()} className="w-full bg-white border border-dashed border-slate-300 hover:border-purple-300 rounded-3xl p-10 cursor-pointer transition-colors flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
               <input type="file" ref={fileInputRef} onChange={(e) => {
@@ -269,7 +261,6 @@ const MobileAddActivity = () => {
             </div>
           )}
 
-          {/* AREA INPUT MANUAL */}
           {inputType === 'manual' && (
             <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-50 space-y-5">
               <div className="space-y-1.5">
@@ -299,7 +290,6 @@ const MobileAddActivity = () => {
                 </div>
               </div>
 
-              {/* Pace Otomatis Dihitung & Info Tambahan */}
               <div className="bg-purple-50 rounded-2xl p-4 flex items-center justify-between border border-purple-100/50">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-purple-600"><Activity size={18}/></div>
