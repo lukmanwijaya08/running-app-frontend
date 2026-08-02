@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Map, Clock, Route, ChevronRight, Flame, Activity, Trash2, Edit, X, CalendarDays, TrendingUp, Type } from 'lucide-react';
+import { Map, Clock, Route, ChevronRight, Flame, Activity, Trash2, Edit, X, CalendarDays, TrendingUp, Type, ChevronLeft, Calendar as CalendarIcon, Filter, ChevronRight as ChevronRightIcon } from 'lucide-react';
 
 // --- HELPER FUNCTIONS ---
 const getDynamicTitle = (timestamp) => {
@@ -20,7 +20,6 @@ const formatTimeStr = (totalSeconds) => {
   return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
 };
 
-// Fungsi untuk mengembalikan format string HH:MM:SS atau MM:SS ke detik
 const parseTimeStr = (str) => {
   if (!str) return 0;
   const parts = str.split(':').map(Number);
@@ -103,7 +102,6 @@ const SwipeableActivityCard = ({ run, onClick, onDelete, onEdit }) => {
   return (
     <div className="relative overflow-hidden rounded-3xl mb-4 bg-slate-100 shadow-sm border border-slate-50">
       
-      {/* TOMBOL AKSI */}
       <div className="absolute inset-y-0 right-0 flex items-center justify-end px-4 gap-3 w-[140px]">
         <button 
           onClick={(e) => { e.stopPropagation(); onEdit(run); setTranslateX(0); setIsSwiped(false); }} 
@@ -119,9 +117,8 @@ const SwipeableActivityCard = ({ run, onClick, onDelete, onEdit }) => {
         </button>
       </div>
 
-      {/* KARTU UTAMA */}
       <div 
-        className="bg-white rounded-3xl p-4 flex flex-col gap-4 relative z-10 transition-transform duration-200 ease-out"
+        className="bg-white rounded-3xl p-4 flex flex-col gap-4 relative z-10 transition-transform duration-200 ease-out border border-slate-100/50"
         style={{ transform: `translateX(${translateX}px)` }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -130,31 +127,29 @@ const SwipeableActivityCard = ({ run, onClick, onDelete, onEdit }) => {
       >
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center shrink-0 border border-purple-100/50">
               <Map size={20} className="text-purple-600" />
             </div>
             <div className="min-w-0">
               <h3 className="font-semibold text-slate-800 text-sm truncate pr-2">{displayTitle}</h3>
-              <p className="text-xs text-slate-400 mt-0.5">{dateString}</p>
+              <p className="text-[11px] font-medium text-slate-400 mt-0.5 uppercase tracking-wider">{dateString}</p>
             </div>
           </div>
           <ChevronRight size={18} className="text-slate-300 shrink-0" />
         </div>
 
-        <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center px-4">
-          <div className="flex items-center gap-1.5">
-            <Route size={14} className="text-slate-400"/>
-            <p className="text-xs font-semibold text-slate-700">{(run.distance || 0).toFixed(2)} km</p>
+        <div className="bg-slate-50 rounded-2xl p-4 flex justify-between items-center px-6 border border-slate-100/50">
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Jarak</span>
+            <p className="text-sm font-black text-slate-800">{(run.distance || 0).toFixed(2)} <span className="text-[10px] font-medium text-slate-500">km</span></p>
           </div>
-          <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
-          <div className="flex items-center gap-1.5">
-            <Flame size={14} className="text-slate-400"/>
-            <p className="text-xs font-semibold text-slate-700">{run.avgPace || "00:00"}</p>
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Pace</span>
+            <p className="text-sm font-black text-slate-800">{run.avgPace || "00:00"}</p>
           </div>
-          <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
-          <div className="flex items-center gap-1.5">
-            <Clock size={14} className="text-slate-400"/>
-            <p className="text-xs font-semibold text-slate-700">{formatTimeStr(run.movingTime)}</p>
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Waktu</span>
+            <p className="text-sm font-black text-slate-800">{Math.floor(run.movingTime / 60)} <span className="text-[10px] font-medium text-slate-500">m</span></p>
           </div>
         </div>
       </div>
@@ -167,18 +162,20 @@ const MobileActivity = () => {
   const navigate = useNavigate();
   const [activities, setActivities] = useState([]);
   
-  // State untuk kontrol Modal Edit
+  // Filter States
+  const [filterDate, setFilterDate] = useState('');
+  const [filterType, setFilterType] = useState('Semua');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const workoutTypes = ['Semua', 'Pagi', 'Siang', 'Sore', 'Malam'];
+
+  // Custom Calendar State
+  const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
+
+  // Edit Modal States
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRun, setEditingRun] = useState(null);
-  
-  // State Form Edit
   const [editForm, setEditForm] = useState({ 
-    title: '', 
-    date: '', 
-    distance: '', 
-    movingTime: '', 
-    avgPace: '', 
-    elevation: '' 
+    title: '', date: '', distance: '', movingTime: '', avgPace: '', elevation: '' 
   });
 
   useEffect(() => {
@@ -200,8 +197,6 @@ const MobileActivity = () => {
 
   const handleEditClick = (run) => {
     setEditingRun(run);
-    
-    // Format tanggal ke input datetime-local (YYYY-MM-DDThh:mm)
     const localDate = new Date(run.date);
     const tzOffset = localDate.getTimezoneOffset() * 60000;
     const localISOTime = (new Date(localDate - tzOffset)).toISOString().slice(0, 16);
@@ -214,7 +209,6 @@ const MobileActivity = () => {
       avgPace: run.avgPace || "00:00",
       elevation: run.elevation || 0
     });
-    
     setIsEditModalOpen(true);
   };
 
@@ -237,36 +231,195 @@ const MobileActivity = () => {
         return item;
       });
       localStorage.setItem('savedRuns', JSON.stringify(updatedData));
-      setActivities(updatedData);
+      
+      const sortedUpdated = updatedData.sort((a, b) => new Date(b.date) - new Date(a.date));
+      setActivities(sortedUpdated);
+      
       setIsEditModalOpen(false);
       setEditingRun(null);
     }
   };
 
+  // --- LOGIKA KALENDER KUSTOM ---
+  const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  const dayNames = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+
+  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year, month) => {
+    let day = new Date(year, month, 1).getDay();
+    return day === 0 ? 6 : day - 1; // Senin = 0, Minggu = 6
+  };
+
+  const prevMonth = () => setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 1, 1));
+
+  const renderCalendarDays = () => {
+    const year = currentMonthDate.getFullYear();
+    const month = currentMonthDate.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = getFirstDayOfMonth(year, month);
+    
+    const days = [];
+    
+    // Kotak kosong sebelum tanggal 1
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="w-10 h-10"></div>);
+    }
+    
+    // Tanggal aktual
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      const isSelected = filterDate === dateStr;
+      const isToday = new Date().toISOString().slice(0,10) === dateStr;
+
+      days.push(
+        <button 
+          key={i}
+          onClick={() => {
+            setFilterDate(dateStr);
+            setIsCalendarOpen(false);
+          }}
+          className={`w-10 h-10 flex items-center justify-center rounded-full text-xs font-semibold transition-all active:scale-90 ${
+            isSelected 
+              ? 'bg-purple-600 text-white shadow-md shadow-purple-200' 
+              : isToday 
+                ? 'border border-purple-300 text-purple-600 bg-purple-50' 
+                : 'text-slate-700 hover:bg-slate-100 active:bg-slate-200'
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+    return days;
+  };
+
+  // --- LOGIKA FILTER ---
+  const filteredActivities = activities.filter(run => {
+    let passDate = true;
+    let passType = true;
+
+    if (filterDate) {
+      const runDate = new Date(run.date);
+      const yyyy = runDate.getFullYear();
+      const mm = String(runDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(runDate.getDate()).padStart(2, '0');
+      passDate = `${yyyy}-${mm}-${dd}` === filterDate;
+    }
+
+    if (filterType !== 'Semua') {
+      const title = run.title || getDynamicTitle(run.date);
+      passType = title.toLowerCase().includes(filterType.toLowerCase());
+    }
+
+    return passDate && passType;
+  });
+
   return (
-    <div className="pt-8 px-5 pb-6 min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 pb-24 relative">
       
-      {/* Header Halaman */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 shadow-sm">
-          <Activity size={20} strokeWidth={2.5} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">Semua Aktivitas</h1>
-          <p className="text-xs font-medium text-slate-400">Riwayat lari yang tersimpan</p>
-        </div>
+      {/* HEADER FIXED */}
+      <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-50/90 backdrop-blur-md z-40 px-5 h-16 flex items-center justify-between border-b border-slate-100">
+        <button onClick={() => navigate('/mobile')} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full text-slate-700 active:bg-slate-200 transition-colors">
+          <ChevronLeft size={24} />
+        </button>
+        <h1 className="text-sm font-bold text-slate-800">Riwayat Aktivitas</h1>
+        <button 
+          onClick={() => setIsCalendarOpen(!isCalendarOpen)} 
+          className={`w-10 h-10 flex items-center justify-center -mr-2 rounded-full transition-colors relative ${filterDate || isCalendarOpen ? 'text-purple-600 bg-purple-50' : 'text-slate-500 active:bg-slate-200'}`}
+        >
+          {isCalendarOpen ? <X size={20} /> : <CalendarIcon size={20} />}
+          {filterDate && !isCalendarOpen && <span className="absolute top-2 right-2 w-2 h-2 bg-purple-600 rounded-full border-2 border-white"></span>}
+        </button>
       </div>
 
-      {/* Daftar Aktivitas */}
-      <div className="space-y-1">
-        {activities.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-slate-400 bg-white rounded-3xl border border-slate-50 shadow-sm">
-            <Map size={48} className="mb-4 text-slate-200" strokeWidth={1.5} />
-            <p className="text-sm font-semibold text-slate-600">Belum ada aktivitas lari</p>
-            <p className="text-xs mt-1">Mulai rekam lari pertamamu sekarang!</p>
+      {/* DROPDOWN KALENDER KUSTOM */}
+      {isCalendarOpen && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setIsCalendarOpen(false)}></div>
+          <div className="fixed top-16 left-0 right-0 max-w-md mx-auto z-40 bg-white border-b border-slate-100 shadow-xl shadow-slate-200/40 rounded-b-3xl p-6 animate-in slide-in-from-top-4">
+            
+            <div className="flex items-center justify-between mb-6">
+              <button onClick={prevMonth} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-600 active:bg-slate-200">
+                <ChevronLeft size={18} />
+              </button>
+              <h2 className="text-sm font-bold text-slate-800">
+                {monthNames[currentMonthDate.getMonth()]} {currentMonthDate.getFullYear()}
+              </h2>
+              <button onClick={nextMonth} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-600 active:bg-slate-200">
+                <ChevronRightIcon size={18} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {dayNames.map(day => (
+                <div key={day} className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">{day}</div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 justify-items-center">
+              {renderCalendarDays()}
+            </div>
+
+            <div className="mt-6 border-t border-slate-100 pt-4 flex justify-end">
+              <button 
+                onClick={() => { setFilterDate(''); setIsCalendarOpen(false); }}
+                className="text-xs font-bold text-slate-500 bg-slate-50 px-4 py-2 rounded-full active:bg-slate-200"
+              >
+                Hapus Filter Tanggal
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* FILTER JENIS LATIHAN (PILL BUTTONS) */}
+      <div className="pt-20 pb-2 flex overflow-x-auto gap-2 px-5 hide-scrollbar">
+        {workoutTypes.map((type) => (
+          <button
+            key={type}
+            onClick={() => setFilterType(type)}
+            className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+              filterType === type 
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-200' 
+                : 'bg-white text-slate-500 border border-slate-100 active:bg-slate-50'
+            }`}
+          >
+            {type === 'Semua' ? type : `Lari ${type}`}
+          </button>
+        ))}
+      </div>
+
+      {/* INDIKATOR FILTER TANGGAL AKTIF */}
+      {filterDate && (
+        <div className="px-5 mb-4 mt-2">
+          <div className="inline-flex items-center gap-2 bg-purple-50 border border-purple-100 px-3 py-2 rounded-xl">
+            <span className="text-xs font-medium text-purple-700">Tampilkan: <span className="font-bold">{new Date(filterDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></span>
+            <button onClick={() => setFilterDate('')} className="text-purple-400 hover:text-purple-600 bg-white rounded-full p-0.5 shadow-sm">
+              <X size={12} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* DAFTAR AKTIVITAS */}
+      <div className="px-5 mt-4 space-y-1">
+        {filteredActivities.length === 0 ? (
+          <div className="bg-white rounded-3xl p-10 text-center border border-slate-100 shadow-sm flex flex-col items-center mt-6">
+            <Filter size={40} className="text-slate-200 mb-4" />
+            <p className="text-sm font-bold text-slate-600 mb-1">Aktivitas Tidak Ditemukan</p>
+            <p className="text-xs font-medium text-slate-400">Coba ubah tanggal atau jenis filter di atas.</p>
+            {(filterDate || filterType !== 'Semua') && (
+              <button 
+                onClick={() => { setFilterDate(''); setFilterType('Semua'); }}
+                className="mt-6 text-xs font-bold text-purple-600 bg-purple-50 px-4 py-2 rounded-full"
+              >
+                Reset Semua Filter
+              </button>
+            )}
           </div>
         ) : (
-          activities.map((run) => (
+          filteredActivities.map((run) => (
             <SwipeableActivityCard 
               key={run.id} 
               run={run} 
@@ -278,25 +431,22 @@ const MobileActivity = () => {
         )}
       </div>
 
-      {/* MODAL POP-UP EDIT AKTIVITAS (MODERN iOS STYLE) */}
+      {/* MODAL POP-UP EDIT AKTIVITAS */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/30 backdrop-blur-sm flex items-end justify-center sm:items-center">
+        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end justify-center sm:items-center">
           <div className="bg-white w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl transform transition-transform animate-in slide-in-from-bottom-full flex flex-col max-h-[90vh]">
             
-            {/* Modal Header */}
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-slate-800 tracking-tight">Edit Aktivitas</h2>
               <button 
                 onClick={() => setIsEditModalOpen(false)} 
-                className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 active:scale-90 transition-transform"
+                className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-slate-500 active:scale-90 transition-transform"
               >
                 <X size={18}/>
               </button>
             </div>
             
-            {/* Form Scrollable Content */}
             <form onSubmit={handleSaveEdit} className="space-y-5 overflow-y-auto hide-scrollbar pb-4">
-              
               <ModernInput 
                 icon={Type} label="Judul Lari" type="text" 
                 value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} 
@@ -330,7 +480,6 @@ const MobileActivity = () => {
                 />
               </div>
 
-              {/* Action Button */}
               <button 
                 type="submit" 
                 className="w-full text-white font-semibold text-base py-4 rounded-2xl shadow-lg shadow-purple-200 mt-2 transition-colors bg-purple-600 active:scale-[0.98]"

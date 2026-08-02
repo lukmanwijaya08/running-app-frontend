@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Map, Clock, Route, ChevronRight, Flame, Footprints, CalendarDays, Activity, Target } from 'lucide-react';
+import { Map, Clock, Route, ChevronRight, Flame, Footprints, CalendarDays, Activity, Target, Trophy, Medal, Scale, TrendingDown, ArrowRight, Zap, ShieldPlus, BarChart2 } from 'lucide-react';
 
 const formatTimeStr = (totalSeconds) => {
   if (!totalSeconds) return "00:00:00";
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = Math.floor(totalSeconds % 60);
-  return `${h < 10 ? '0'+h : h}:${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+  if (h > 0) return `${h < 10 ? '0'+h : h}:${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+  return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
 };
 
 const getDynamicTitle = (timestamp) => {
@@ -23,13 +24,21 @@ const MobileHome = () => {
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const [recentActivities, setRecentActivities] = useState([]);
   
-  const [userData, setUserData] = useState({ name: 'Lukman', weeklyTarget: 30 });
+  const [userData, setUserData] = useState({ 
+    name: 'Pelari', 
+    weeklyTarget: 30,
+    height: 170,
+    weight: 70,
+    gender: 'L',
+    mainTarget: 'speed'
+  });
+  
   const [weeklyStats, setWeeklyStats] = useState({ distance: 0, duration: 0, count: 0 });
   const [todayStats, setTodayStats] = useState({ distance: 0, duration: 0, calories: 0, steps: 0 });
   const [consistencyDays, setConsistencyDays] = useState([]);
+  const [personalRecords, setPersonalRecords] = useState({ longestDist: 0, fastestPaceStr: "00:00", fastestPaceSec: 9999 });
 
   const profilePhoto = "https://i.pravatar.cc/150?img=11";
-
   const targetSteps = 10000;
   const progressPercentage = todayStats.steps > 0 ? (todayStats.steps / targetSteps) * 100 : 0;
   
@@ -37,31 +46,57 @@ const MobileHome = () => {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (Math.min(animatedProgress, 100) / 100) * circumference;
 
+  const calculateIdealWeight = (height, gender) => {
+    const h = parseInt(height);
+    if (!h) return 0;
+    if (gender === 'P') return (h - 100) - ((h - 100) * 0.15);
+    return (h - 100) - ((h - 100) * 0.1);
+  };
+  const idealWeight = calculateIdealWeight(userData.height, userData.gender);
+  const runningScore = Math.min(Math.round(((weeklyStats.distance / userData.weeklyTarget) * 60) + ((weeklyStats.count / 4) * 40)), 100) || 0;
+
   useEffect(() => {
     const savedProfile = JSON.parse(localStorage.getItem('userProfile'));
     if (savedProfile) {
       setUserData({
         name: savedProfile.name || 'Pelari',
-        weeklyTarget: parseFloat(savedProfile.weeklyTarget) || 30
+        weeklyTarget: parseFloat(savedProfile.weeklyTarget) || 30,
+        height: parseFloat(savedProfile.height) || 170,
+        weight: parseFloat(savedProfile.weight) || 70,
+        gender: savedProfile.gender || 'L',
+        mainTarget: savedProfile.mainTarget || 'speed'
       });
     }
 
     const savedRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
-    setRecentActivities(savedRuns);
+    const sortedRuns = savedRuns.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setRecentActivities(sortedRuns);
 
-    // --- LOGIKA BATAS MINGGU (RESET OTOMATIS) ---
+    let maxDist = 0;
+    let minPaceSec = 9999;
+    let minPaceStr = "00:00";
+
+    savedRuns.forEach(run => {
+      if (run.distance > maxDist) maxDist = run.distance;
+      if (run.avgPace && run.avgPace !== "00:00") {
+        const parts = run.avgPace.split(':').map(Number);
+        const paceSec = parts[0] * 60 + parts[1];
+        if (paceSec > 0 && paceSec < minPaceSec) {
+          minPaceSec = paceSec;
+          minPaceStr = run.avgPace;
+        }
+      }
+    });
+    setPersonalRecords({ longestDist: maxDist, fastestPaceStr: minPaceStr, fastestPaceSec: minPaceSec });
+
     const today = new Date();
-    
-    // Cari tahu jarak hari ini ke hari Senin (0 = Minggu, 1 = Senin, dst)
     const currentDay = today.getDay(); 
     const distanceToMonday = currentDay === 0 ? 6 : currentDay - 1;
     
-    // Tetapkan Awal Minggu (Senin, 00:00:00)
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - distanceToMonday);
     startOfWeek.setHours(0, 0, 0, 0);
 
-    // Tetapkan Akhir Minggu (Minggu, 23:59:59)
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
@@ -72,15 +107,12 @@ const MobileHome = () => {
     savedRuns.forEach(run => {
       const runDate = new Date(run.date);
       
-      // Analitik Mingguan: Rentang Senin-Minggu MINGGU INI
       if (runDate >= startOfWeek && runDate <= endOfWeek) {
         wDist += run.distance || 0;
         wDur += run.movingTime || 0;
         wCount++;
       }
-      
-      // Analitik Harian
-      if (runDate.toDateString() === today.toDateString()) {
+      if (runDate.getFullYear() === today.getFullYear() && runDate.getMonth() === today.getMonth() && runDate.getDate() === today.getDate()) {
         tDist += run.distance || 0;
         tDur += run.movingTime || 0;
         tCal += run.calories || 0;
@@ -91,7 +123,6 @@ const MobileHome = () => {
     setWeeklyStats({ distance: wDist, duration: wDur, count: wCount });
     setTodayStats({ distance: tDist, duration: tDur, calories: tCal, steps: tSteps });
 
-    // --- KALKULASI KALENDER KONSISTENSI & TOOLTIP ---
     const generateConsistency = () => {
       const days = [];
       for (let i = 6; i >= 0; i--) {
@@ -115,14 +146,7 @@ const MobileHome = () => {
           }
         });
 
-        days.push({ 
-          day: dayName, 
-          date: d.getDate(), 
-          active: hasRun, 
-          isToday: i === 0,
-          distance: dailyDist, 
-          duration: dailyDur   
-        });
+        days.push({ day: dayName, date: d.getDate(), active: hasRun, isToday: i === 0, distance: dailyDist, duration: dailyDur });
       }
       return days;
     };
@@ -134,14 +158,13 @@ const MobileHome = () => {
   }, [progressPercentage]);
 
   return (
-    // DIKEMBALIKAN KE LIGHT MODE: bg-slate-50
-    <div className="pt-8 px-5 min-h-screen bg-slate-50 pb-24">
+    <div className="pt-8 px-5 min-h-screen bg-slate-50 pb-24 font-sans text-slate-800" style={{ fontFamily: "'Poppins', sans-serif" }}>
       
       {/* HEADER */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <p className="text-xs font-medium text-slate-400 mb-1">{new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })} • Semarang</p>
-          <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">Halo, {userData.name}!</h1>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Halo, {userData.name}!</h1>
         </div>
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full overflow-hidden border border-slate-200 shadow-sm bg-slate-100">
@@ -150,31 +173,9 @@ const MobileHome = () => {
         </div>
       </div>
 
-      {/* CAROUSEL KARTU */}
+      {/* 1. CAROUSEL MINGGUAN UTAMA */}
       <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory hide-scrollbar -mx-5 px-5">
         
-        {/* STATISTIK MINGGUAN */}
-        <div className="min-w-[85%] snap-center shrink-0 bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between border border-slate-50">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity size={18} className="text-purple-600" />
-            <h2 className="text-sm font-semibold text-slate-700">Aktivitas Mingguan</h2>
-          </div>
-          <div className="flex justify-between items-end">
-            <div>
-              <p className="text-3xl font-semibold text-slate-800 tracking-tight">{weeklyStats.distance.toFixed(1)}</p>
-              <p className="text-xs font-medium text-slate-400 mt-1">Kilometer</p>
-            </div>
-            <div className="text-right">
-              <p className="text-lg font-semibold text-slate-800">{formatTimeStr(weeklyStats.duration)}</p>
-              <p className="text-xs font-medium text-slate-400">Waktu Lari</p>
-            </div>
-          </div>
-          <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs font-medium text-slate-500">
-            <Route size={14} className="text-purple-500" />
-            <span>{weeklyStats.count} Total Aktivitas Minggu Ini</span>
-          </div>
-        </div>
-
         {/* KONSISTENSI 7 HARI TERAKHIR */}
         <div className="min-w-[85%] snap-center shrink-0 bg-white rounded-3xl p-6 shadow-sm flex items-center gap-5 border border-slate-50">
           <div className="relative w-20 h-20 flex-shrink-0">
@@ -183,7 +184,7 @@ const MobileHome = () => {
               <circle cx="40" cy="40" r={35} stroke="#9333ea" strokeWidth="8" fill="transparent" strokeDasharray={219} strokeDashoffset={219 - (Math.min(weeklyStats.count / 7, 1)) * 219} strokeLinecap="round" />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-sm font-semibold text-slate-800">{Math.round((weeklyStats.count / 7) * 100)}%</span>
+              <span className="text-sm font-bold text-slate-800">{Math.round((weeklyStats.count / 7) * 100)}%</span>
             </div>
           </div>
           <div className="flex-1">
@@ -195,14 +196,12 @@ const MobileHome = () => {
               {consistencyDays.slice(2, 7).map((d, i) => (
                 <div key={i} className="flex flex-col items-center gap-1.5 relative group cursor-pointer">
                   <span className={`text-[9px] font-medium ${d.isToday ? 'text-purple-600' : 'text-slate-400'}`}>{d.day}</span>
-                  
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium transition-all ${d.active ? 'bg-purple-600 text-white shadow-md shadow-purple-200' : (d.isToday ? 'border border-purple-200 text-purple-600 bg-purple-50' : 'text-slate-500 bg-slate-50')}`}>
                     {d.date}
                   </div>
-
-                  {/* TOOLTIP: Dipertahankan dengan warna gelap (slate-800) agar menonjol di Light Mode */}
+                  {/* Tooltip */}
                   {d.active && (
-                    <div className="absolute bottom-full mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-active:opacity-100 group-active:visible transition-all duration-200 flex flex-col items-center bg-slate-800 text-white p-2 rounded-xl shadow-xl whitespace-nowrap z-50 border border-slate-700 pointer-events-none">
+                    <div className="absolute bottom-full mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-active:opacity-100 group-active:visible transition-all duration-200 flex flex-col items-center bg-slate-800 text-white p-2 rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none">
                       <span className="text-xs font-bold text-white mb-0.5">{d.distance.toFixed(1)} km</span>
                       <span className="text-[10px] text-slate-300 font-medium flex items-center gap-1"><Clock size={10}/> {formatTimeStr(d.duration)}</span>
                       <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
@@ -223,7 +222,7 @@ const MobileHome = () => {
           </div>
           <div className="relative z-10">
             <div className="flex justify-between items-end mb-2">
-              <span className="text-3xl font-semibold tracking-tight">{weeklyStats.distance.toFixed(1)} <span className="text-sm font-medium text-purple-200">/ {userData.weeklyTarget} km</span></span>
+              <span className="text-3xl font-bold tracking-tight">{weeklyStats.distance.toFixed(1)} <span className="text-sm font-medium text-purple-200">/ {userData.weeklyTarget} km</span></span>
             </div>
             <div className="h-2 w-full bg-purple-900/40 rounded-full overflow-hidden mt-3">
               <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${Math.min((weeklyStats.distance / userData.weeklyTarget) * 100, 100)}%` }}></div>
@@ -231,46 +230,188 @@ const MobileHome = () => {
             <p className="text-xs font-medium text-purple-100 mt-3">{(userData.weeklyTarget - weeklyStats.distance) > 0 ? `${(userData.weeklyTarget - weeklyStats.distance).toFixed(1)} km tersisa untuk target.` : 'Target mingguan tercapai! 🎉'}</p>
           </div>
         </div>
-      </div>
 
-      {/* TARGET HARIAN */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm mb-6 flex flex-col items-center relative overflow-hidden border border-slate-50">
-        <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-50 rounded-full opacity-50 blur-2xl pointer-events-none"></div>
-        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-orange-50 rounded-full opacity-50 blur-2xl pointer-events-none"></div>
-        <h2 className="text-xs font-medium text-slate-400 mb-6">Target Harian</h2>
-        <div className="relative w-48 h-48 flex items-center justify-center mb-6">
-          <svg className="w-full h-full transform -rotate-90">
-            <circle cx="96" cy="96" r={radius} stroke="#f8fafc" strokeWidth="12" fill="transparent" />
-            <circle cx="96" cy="96" r={radius} stroke="#9333ea" strokeWidth="12" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
-          </svg>
-          <div className="absolute flex flex-col items-center justify-center">
-            <Footprints size={20} className="text-orange-400 mb-1 opacity-90" />
-            <span className="text-3xl font-semibold text-slate-800 tracking-tight">{todayStats.steps.toLocaleString('id-ID')}</span>
-            <span className="text-[10px] font-medium text-slate-400 mt-1">Langkah</span>
+        {/* STATISTIK MINGGUAN */}
+        <div className="min-w-[85%] snap-center shrink-0 bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between border border-slate-50">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity size={18} className="text-purple-600" />
+            <h2 className="text-sm font-semibold text-slate-700">Aktivitas Mingguan</h2>
+          </div>
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-3xl font-bold text-slate-800 tracking-tight">{weeklyStats.distance.toFixed(1)}</p>
+              <p className="text-xs font-medium text-slate-400 mt-1">Kilometer</p>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-bold text-slate-800">{formatTimeStr(weeklyStats.duration)}</p>
+              <p className="text-xs font-medium text-slate-400">Waktu Lari</p>
+            </div>
+          </div>
+          <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs font-medium text-slate-500">
+            <Route size={14} className="text-purple-500" />
+            <span>{weeklyStats.count} Total Aktivitas Minggu Ini</span>
           </div>
         </div>
-        <div className="flex justify-between w-full px-4">
-          <div className="text-center">
-            <p className="text-[10px] font-medium text-slate-400 mb-1">Jarak</p>
-            <p className="font-semibold text-slate-700">{todayStats.distance.toFixed(1)} <span className="text-xs text-slate-400 font-normal">km</span></p>
+
+        {/* RUNNING SCORE MINGGUAN */}
+        <div className="min-w-[85%] snap-center shrink-0 bg-white rounded-3xl p-6 shadow-sm border border-slate-50 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Medal size={16} className="text-purple-600" />
+              <h2 className="text-sm font-semibold text-slate-800">Running Score</h2>
+            </div>
+            <p className="text-xs font-medium text-slate-500">Performa Minggu Ini</p>
           </div>
-          <div className="w-px h-8 bg-slate-100"></div>
-          <div className="text-center">
-            <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center justify-center gap-1"><Flame size={10} className="text-orange-400"/> Kalori</p>
-            <p className="font-semibold text-slate-700">{todayStats.calories} <span className="text-xs text-slate-400 font-normal">cal</span></p>
+          <div className="relative w-16 h-16 flex items-center justify-center">
+            <svg className="absolute w-full h-full transform -rotate-90">
+              <circle cx="32" cy="32" r="28" stroke="#f8fafc" strokeWidth="6" fill="transparent" />
+              <circle cx="32" cy="32" r="28" stroke="#9333ea" strokeWidth="6" fill="transparent" strokeDasharray={175} strokeDashoffset={175 - (runningScore / 100) * 175} strokeLinecap="round" />
+            </svg>
+            <span className="text-xl font-bold text-slate-800">{runningScore}</span>
           </div>
-          <div className="w-px h-8 bg-slate-100"></div>
-          <div className="text-center">
-            <p className="text-[10px] font-medium text-slate-400 mb-1">Waktu</p>
-            <p className="font-semibold text-slate-700">{Math.floor(todayStats.duration / 60)} <span className="text-xs text-slate-400 font-normal">Min</span></p>
-          </div>
+        </div>
+
+      </div>
+
+      {/* NEW: QUICK ACTIONS WIDGET (Akses Cepat) */}
+      <div className="mb-8 mt-2">
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { title: 'Latihan', icon: Target, route: '/mobile/training', color: 'text-blue-500', bg: 'bg-blue-50' },
+            { title: 'Recovery', icon: ShieldPlus, route: '/mobile/recovery', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+            { title: 'Statistik', icon: BarChart2, route: '/mobile/stats', color: 'text-purple-500', bg: 'bg-purple-50' },
+            { title: 'Rekor', icon: Trophy, route: '/mobile/pr', color: 'text-amber-500', bg: 'bg-amber-50' }
+          ].map((item, idx) => (
+            <div key={idx} onClick={() => navigate(item.route)} className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform group">
+              <div className={`w-14 h-14 rounded-[1.25rem] ${item.bg} flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-white group-hover:shadow-md transition-shadow`}>
+                <item.icon size={24} className={item.color} />
+              </div>
+              <span className="text-[10px] font-semibold text-slate-600">{item.title}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* AKTIVITAS TERBARU */}
+      {/* 2. CAROUSEL DASHBOARD HARIAN */}
+      <h2 className="text-sm font-bold text-slate-800 tracking-tight mb-3 px-1">Daily Dashboard</h2>
+      <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory hide-scrollbar -mx-5 px-5">
+        
+        {/* KARTU 1: TARGET HARIAN */}
+        <div className="w-[calc(100vw-40px)] snap-center shrink-0 bg-white rounded-3xl p-6 shadow-sm flex flex-col items-center border border-slate-50 relative">
+          <p className="text-xs font-medium text-slate-400 mb-6 mt-2">Target Harian</p>
+          <div className="relative w-40 h-40 flex items-center justify-center mb-8">
+            <svg className="w-full h-full transform -rotate-90">
+              <circle cx="80" cy="80" r={radius} stroke="#f8fafc" strokeWidth="12" fill="transparent" />
+              <circle cx="80" cy="80" r={radius} stroke="#9333ea" strokeWidth="12" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+            </svg>
+            <div className="absolute flex flex-col items-center justify-center">
+              <Footprints size={20} className="text-orange-400 mb-1 opacity-90" />
+              <span className="text-2xl font-bold text-slate-800 tracking-tight">{todayStats.steps.toLocaleString('id-ID')}</span>
+              <span className="text-[10px] font-medium text-slate-400 mt-1">Langkah</span>
+            </div>
+          </div>
+          <div className="flex justify-between w-full px-2 pb-2">
+            <div className="text-center">
+              <p className="text-[10px] font-medium text-slate-400 mb-1">Jarak</p>
+              <p className="font-semibold text-slate-700">{todayStats.distance.toFixed(1)} <span className="text-xs text-slate-400 font-normal">km</span></p>
+            </div>
+            <div className="w-px h-8 bg-slate-100"></div>
+            <div className="text-center">
+              <p className="text-[10px] font-medium text-slate-400 mb-1 flex items-center justify-center gap-1"><Flame size={10} className="text-orange-400"/> Kalori</p>
+              <p className="font-semibold text-slate-700">{todayStats.calories} <span className="text-xs text-slate-400 font-normal">cal</span></p>
+            </div>
+            <div className="w-px h-8 bg-slate-100"></div>
+            <div className="text-center">
+              <p className="text-[10px] font-medium text-slate-400 mb-1">Waktu</p>
+              <p className="font-semibold text-slate-700">{Math.floor(todayStats.duration / 60)} <span className="text-xs text-slate-400 font-normal">Min</span></p>
+            </div>
+          </div>
+        </div>
+
+        {/* KARTU 2: PROGRESS BERAT BADAN */}
+        <div 
+          onClick={() => navigate('/mobile/diet')}
+          className="w-[calc(100vw-40px)] snap-center shrink-0 bg-white rounded-3xl p-6 shadow-sm flex flex-col border border-slate-50 justify-between cursor-pointer active:scale-[0.98] transition-transform"
+        >
+          <div className="text-center">
+             <p className="text-xs font-medium text-slate-400 mb-6 mt-2 flex items-center justify-center gap-1">
+               Diet & Berat Badan <ChevronRight size={14} className="text-purple-400"/>
+             </p>
+          </div>
+          <div className="mt-2 mb-4">
+            <div className="flex justify-between items-end mb-4">
+              <div>
+                <p className="text-xs font-medium text-slate-400 mb-1">Berat Saat Ini</p>
+                <h3 className="text-4xl font-bold text-slate-800 tracking-tighter">{userData.weight} <span className="text-lg font-medium text-slate-400 tracking-normal">kg</span></h3>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-medium text-slate-400 mb-1">Ideal</p>
+                <h3 className="text-2xl font-bold text-slate-700">{idealWeight.toFixed(1)} <span className="text-sm font-medium text-slate-400">kg</span></h3>
+              </div>
+            </div>
+
+            <div className="relative pt-2 pb-6">
+               <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                  <div className="bg-purple-600 h-full" style={{ width: '65%' }}></div>
+               </div>
+               <div className="flex justify-between items-center mt-3">
+                 <span className="text-[10px] font-medium text-slate-400">Sisa {Math.abs(userData.weight - idealWeight).toFixed(1)} kg lagi</span>
+                 <span className="text-[10px] font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">On Track</span>
+               </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 mt-auto">
+             <div className="flex items-center gap-3">
+               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-purple-600 shadow-sm"><TrendingDown size={18}/></div>
+               <div>
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Target Defisit</p>
+                 <p className="text-sm font-bold text-slate-800">-500 <span className="text-xs font-medium text-slate-500">kcal / hari</span></p>
+               </div>
+             </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 3. PERSONAL RECORD TERBARU & CHALLENGE */}
+      <h2 className="text-sm font-bold text-slate-800 tracking-tight mb-3 px-1 mt-2">Personal Records</h2>
+      <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="bg-white border border-slate-50 rounded-3xl p-5 shadow-sm flex flex-col justify-center">
+           <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center mb-4 text-purple-600">
+             <Trophy size={18} />
+           </div>
+           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Terjauh (PR)</p>
+           <h3 className="text-2xl font-bold text-slate-800">{personalRecords.longestDist.toFixed(2)} <span className="text-sm font-medium text-slate-500">km</span></h3>
+        </div>
+        <div className="bg-white border border-slate-50 rounded-3xl p-5 shadow-sm flex flex-col justify-center">
+           <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center mb-4 text-orange-500">
+             <Zap size={18} />
+           </div>
+           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Tercepat (PR)</p>
+           <h3 className="text-2xl font-bold text-slate-800">{personalRecords.fastestPaceStr} <span className="text-sm font-medium text-slate-500">/km</span></h3>
+        </div>
+      </div>
+
+      {/* CHALLENGE BANNER */}
+      <div className="bg-white rounded-3xl p-5 mb-8 shadow-sm border border-slate-50 flex items-center justify-between mx-1 relative overflow-hidden cursor-pointer active:scale-95 transition-transform">
+         <div>
+           <div className="flex items-center gap-1.5 mb-1">
+             <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse"></span>
+             <p className="text-[10px] font-bold uppercase tracking-widest text-purple-600">Challenge Berjalan</p>
+           </div>
+           <h3 className="text-slate-800 font-bold text-sm">100KM Monthly Push</h3>
+           <p className="text-xs text-slate-400 mt-1">24.5 km selesai • 20 hari tersisa</p>
+         </div>
+         <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center text-purple-600">
+           <ArrowRight size={18} />
+         </div>
+      </div>
+
+      {/* 4. AKTIVITAS TERBARU */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-5 px-1">
-          <h2 className="text-lg font-semibold text-slate-800 tracking-tight">Aktivitas Terbaru</h2>
+          <h2 className="text-lg font-bold text-slate-800 tracking-tight">Aktivitas Terbaru</h2>
           <button onClick={() => navigate('/mobile/activities')} className="text-xs font-medium text-purple-600">Lihat Semua</button>
         </div>
 
@@ -290,7 +431,7 @@ const MobileHome = () => {
                         <Map size={20} className="text-purple-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-slate-800 text-sm">{getDynamicTitle(activity.date)}</h3>
+                        <h3 className="font-semibold text-slate-800 text-sm">{activity.title || getDynamicTitle(activity.date)}</h3>
                         <p className="text-xs text-slate-400 mt-0.5">{dateString} • {activity.calories || 0} kkal</p>
                       </div>
                     </div>
