@@ -175,6 +175,24 @@ const MobileHome = () => {
 
       {/* 1. CAROUSEL MINGGUAN UTAMA */}
       <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory hide-scrollbar -mx-5 px-5">
+
+        {/* TARGET MINGGUAN */}
+        <div className="min-w-[85%] snap-center shrink-0 bg-purple-600 rounded-3xl p-6 shadow-md shadow-purple-200 text-white flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="flex items-center gap-2 mb-4 relative z-10">
+            <Target size={18} className="text-purple-200" />
+            <h2 className="text-sm font-semibold text-purple-50">Target Mingguan</h2>
+          </div>
+          <div className="relative z-10">
+            <div className="flex justify-between items-end mb-2">
+              <span className="text-3xl font-bold tracking-tight">{weeklyStats.distance.toFixed(1)} <span className="text-sm font-medium text-purple-200">/ {userData.weeklyTarget} km</span></span>
+            </div>
+            <div className="h-2 w-full bg-purple-900/40 rounded-full overflow-hidden mt-3">
+              <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${Math.min((weeklyStats.distance / userData.weeklyTarget) * 100, 100)}%` }}></div>
+            </div>
+            <p className="text-xs font-medium text-purple-100 mt-3">{(userData.weeklyTarget - weeklyStats.distance) > 0 ? `${(userData.weeklyTarget - weeklyStats.distance).toFixed(1)} km tersisa untuk target.` : 'Target mingguan tercapai! 🎉'}</p>
+          </div>
+        </div>
         
         {/* KONSISTENSI 7 HARI TERAKHIR */}
         <div className="min-w-[85%] snap-center shrink-0 bg-white rounded-3xl p-6 shadow-sm flex items-center gap-5 border border-slate-50">
@@ -213,23 +231,7 @@ const MobileHome = () => {
           </div>
         </div>
 
-        {/* TARGET MINGGUAN */}
-        <div className="min-w-[85%] snap-center shrink-0 bg-purple-600 rounded-3xl p-6 shadow-md shadow-purple-200 text-white flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-          <div className="flex items-center gap-2 mb-4 relative z-10">
-            <Target size={18} className="text-purple-200" />
-            <h2 className="text-sm font-semibold text-purple-50">Target Mingguan</h2>
-          </div>
-          <div className="relative z-10">
-            <div className="flex justify-between items-end mb-2">
-              <span className="text-3xl font-bold tracking-tight">{weeklyStats.distance.toFixed(1)} <span className="text-sm font-medium text-purple-200">/ {userData.weeklyTarget} km</span></span>
-            </div>
-            <div className="h-2 w-full bg-purple-900/40 rounded-full overflow-hidden mt-3">
-              <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${Math.min((weeklyStats.distance / userData.weeklyTarget) * 100, 100)}%` }}></div>
-            </div>
-            <p className="text-xs font-medium text-purple-100 mt-3">{(userData.weeklyTarget - weeklyStats.distance) > 0 ? `${(userData.weeklyTarget - weeklyStats.distance).toFixed(1)} km tersisa untuk target.` : 'Target mingguan tercapai! 🎉'}</p>
-          </div>
-        </div>
+        
 
         {/* STATISTIK MINGGUAN */}
         <div className="min-w-[85%] snap-center shrink-0 bg-white rounded-3xl p-6 shadow-sm flex flex-col justify-between border border-slate-50">

@@ -1,9 +1,10 @@
+// File 1: MobileActivityDetail.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route, Flame, X, Download, ChevronRight, Trophy, Target, Footprints } from 'lucide-react';
+import { ChevronLeft, Share2, MapPin, Clock, Zap, TrendingUp, Activity, Route, Flame, X, Download, ChevronRight, Trophy, Target, Footprints, Play } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toPng } from 'html-to-image';
 
@@ -270,6 +271,20 @@ const MobileActivityDetail = () => {
              {mapPositions.length > 1 && <Polyline positions={mapPositions} color="#9333ea" weight={5} lineCap="round" lineJoin="round" />}
              <FitBounds positions={mapPositions} />
           </MapContainer>
+
+          <button 
+            onClick={() => navigate('/mobile/route-preview', {
+              state: {
+                distance: activity.distance,
+                elevation: safeMaxElevation,
+                avgPace: activity.avgPace,
+                title: dynamicTitle
+              }
+            })}
+            className="absolute bottom-6 left-5 z-[1000] w-12 h-12 bg-white rounded-full flex items-center justify-center text-purple-600 shadow-xl border border-slate-100 active:scale-90 transition-transform"
+          >
+            <Play size={22} fill="currentColor" className="ml-1" />
+          </button>
         </div>
 
         <div className="px-5 py-6">
