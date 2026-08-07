@@ -31,14 +31,14 @@ const parseTimeStr = (str) => {
 // --- KOMPONEN INPUT FORM MINIMALIS ---
 const ModernInput = ({ icon: Icon, label, type, value, onChange, placeholder, step }) => (
   <div className="space-y-1.5">
-    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{label}</label>
-    <div className="bg-slate-50 rounded-2xl flex items-center gap-3 px-4 border border-slate-100 focus-within:border-purple-400 focus-within:ring-[3px] focus-within:ring-purple-50 transition-all">
-      {Icon && <Icon size={18} className="text-slate-400 shrink-0" />}
+    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">{label}</label>
+    <div className="bg-slate-900 rounded-2xl flex items-center gap-3 px-4 border border-slate-800 focus-within:border-[#ccff00] focus-within:ring-[1px] focus-within:ring-[#ccff00] transition-all">
+      {Icon && <Icon size={18} className="text-slate-500 shrink-0" />}
       <input 
         type={type} 
         value={value} 
         onChange={onChange} 
-        className="w-full bg-transparent py-3.5 outline-none font-medium text-sm text-slate-800" 
+        className="w-full bg-transparent py-3.5 outline-none font-medium text-sm text-white placeholder-slate-600" 
         placeholder={placeholder}
         step={step}
         required 
@@ -100,25 +100,25 @@ const SwipeableActivityCard = ({ run, onClick, onDelete, onEdit }) => {
   const displayTitle = run.title || getDynamicTitle(run.date);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl mb-4 bg-slate-100 shadow-sm border border-slate-50">
+    <div className="relative overflow-hidden rounded-3xl mb-4 bg-slate-900 shadow-md border border-slate-800">
       
       <div className="absolute inset-y-0 right-0 flex items-center justify-end px-4 gap-3 w-[140px]">
         <button 
           onClick={(e) => { e.stopPropagation(); onEdit(run); setTranslateX(0); setIsSwiped(false); }} 
-          className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform shadow-md shadow-amber-200"
+          className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center text-slate-900 active:scale-90 transition-transform shadow-md"
         >
           <Edit size={16} />
         </button>
         <button 
           onClick={(e) => { e.stopPropagation(); onDelete(run.id); }} 
-          className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform shadow-md shadow-rose-200"
+          className="w-10 h-10 bg-rose-600 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform shadow-md"
         >
           <Trash2 size={16} />
         </button>
       </div>
 
       <div 
-        className="bg-white rounded-3xl p-4 flex flex-col gap-4 relative z-10 transition-transform duration-200 ease-out border border-slate-100/50"
+        className="bg-slate-900 rounded-3xl p-4 flex flex-col gap-4 relative z-10 transition-transform duration-200 ease-out border border-slate-800"
         style={{ transform: `translateX(${translateX}px)` }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -127,29 +127,29 @@ const SwipeableActivityCard = ({ run, onClick, onDelete, onEdit }) => {
       >
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center shrink-0 border border-purple-100/50">
-              <Map size={20} className="text-purple-600" />
+            <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center shrink-0 border border-slate-700">
+              <Map size={20} className="text-[#ccff00]" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-semibold text-slate-800 text-sm truncate pr-2">{displayTitle}</h3>
+              <h3 className="font-semibold text-white text-sm truncate pr-2">{displayTitle}</h3>
               <p className="text-[11px] font-medium text-slate-400 mt-0.5 uppercase tracking-wider">{dateString}</p>
             </div>
           </div>
-          <ChevronRight size={18} className="text-slate-300 shrink-0" />
+          <ChevronRight size={18} className="text-slate-500 shrink-0" />
         </div>
 
-        <div className="bg-slate-50 rounded-2xl p-4 flex justify-between items-center px-6 border border-slate-100/50">
+        <div className="bg-slate-950 rounded-2xl p-4 flex justify-between items-center px-6 border border-slate-800">
           <div className="flex flex-col items-center">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Jarak</span>
-            <p className="text-sm font-black text-slate-800">{(run.distance || 0).toFixed(2)} <span className="text-[10px] font-medium text-slate-500">km</span></p>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Jarak</span>
+            <p className="text-sm font-black text-white">{(run.distance || 0).toFixed(2)} <span className="text-[10px] font-medium text-slate-400">km</span></p>
           </div>
           <div className="flex flex-col items-center">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Pace</span>
-            <p className="text-sm font-black text-slate-800">{run.avgPace || "00:00"}</p>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Pace</span>
+            <p className="text-sm font-black text-white">{run.avgPace || "00:00"}</p>
           </div>
           <div className="flex flex-col items-center">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Waktu</span>
-            <p className="text-sm font-black text-slate-800">{Math.floor(run.movingTime / 60)} <span className="text-[10px] font-medium text-slate-500">m</span></p>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Waktu</span>
+            <p className="text-sm font-black text-white">{Math.floor(run.movingTime / 60)} <span className="text-[10px] font-medium text-slate-400">m</span></p>
           </div>
         </div>
       </div>
@@ -247,7 +247,7 @@ const MobileActivity = () => {
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year, month) => {
     let day = new Date(year, month, 1).getDay();
-    return day === 0 ? 6 : day - 1; // Senin = 0, Minggu = 6
+    return day === 0 ? 6 : day - 1; 
   };
 
   const prevMonth = () => setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() - 1, 1));
@@ -261,12 +261,10 @@ const MobileActivity = () => {
     
     const days = [];
     
-    // Kotak kosong sebelum tanggal 1
     for (let i = 0; i < firstDay; i++) {
       days.push(<div key={`empty-${i}`} className="w-10 h-10"></div>);
     }
     
-    // Tanggal aktual
     for (let i = 1; i <= daysInMonth; i++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
       const isSelected = filterDate === dateStr;
@@ -281,10 +279,10 @@ const MobileActivity = () => {
           }}
           className={`w-10 h-10 flex items-center justify-center rounded-full text-xs font-semibold transition-all active:scale-90 ${
             isSelected 
-              ? 'bg-purple-600 text-white shadow-md shadow-purple-200' 
+              ? 'bg-[#ccff00] text-slate-900 shadow-[0_0_10px_rgba(204,255,0,0.5)]' 
               : isToday 
-                ? 'border border-purple-300 text-purple-600 bg-purple-50' 
-                : 'text-slate-700 hover:bg-slate-100 active:bg-slate-200'
+                ? 'border border-[#ccff00] text-[#ccff00] bg-slate-900' 
+                : 'text-slate-300 hover:bg-slate-800 active:bg-slate-700'
           }`}
         >
           {i}
@@ -316,20 +314,20 @@ const MobileActivity = () => {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24 relative">
+    <div className="min-h-screen bg-slate-950 pb-24 relative font-sans text-white">
       
       {/* HEADER FIXED */}
-      <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-50/90 backdrop-blur-md z-40 px-5 h-16 flex items-center justify-between border-b border-slate-100">
-        <button onClick={() => navigate('/mobile')} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full text-slate-700 active:bg-slate-200 transition-colors">
+      <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-950/90 backdrop-blur-md z-40 px-5 h-16 flex items-center justify-between border-b border-slate-900">
+        <button onClick={() => navigate('/mobile')} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full text-slate-300 active:bg-slate-800 transition-colors">
           <ChevronLeft size={24} />
         </button>
-        <h1 className="text-sm font-bold text-slate-800">Riwayat Aktivitas</h1>
+        <h1 className="text-sm font-bold text-white">Riwayat Aktivitas</h1>
         <button 
           onClick={() => setIsCalendarOpen(!isCalendarOpen)} 
-          className={`w-10 h-10 flex items-center justify-center -mr-2 rounded-full transition-colors relative ${filterDate || isCalendarOpen ? 'text-purple-600 bg-purple-50' : 'text-slate-500 active:bg-slate-200'}`}
+          className={`w-10 h-10 flex items-center justify-center -mr-2 rounded-full transition-colors relative ${filterDate || isCalendarOpen ? 'text-[#ccff00] bg-slate-900' : 'text-slate-400 active:bg-slate-800'}`}
         >
           {isCalendarOpen ? <X size={20} /> : <CalendarIcon size={20} />}
-          {filterDate && !isCalendarOpen && <span className="absolute top-2 right-2 w-2 h-2 bg-purple-600 rounded-full border-2 border-white"></span>}
+          {filterDate && !isCalendarOpen && <span className="absolute top-2 right-2 w-2 h-2 bg-[#ccff00] rounded-full border-2 border-slate-950"></span>}
         </button>
       </div>
 
@@ -337,23 +335,23 @@ const MobileActivity = () => {
       {isCalendarOpen && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setIsCalendarOpen(false)}></div>
-          <div className="fixed top-16 left-0 right-0 max-w-md mx-auto z-40 bg-white border-b border-slate-100 shadow-xl shadow-slate-200/40 rounded-b-3xl p-6 animate-in slide-in-from-top-4">
+          <div className="fixed top-16 left-0 right-0 max-w-md mx-auto z-40 bg-slate-900 border-b border-slate-800 shadow-xl shadow-black/40 rounded-b-3xl p-6 animate-in slide-in-from-top-4">
             
             <div className="flex items-center justify-between mb-6">
-              <button onClick={prevMonth} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-600 active:bg-slate-200">
+              <button onClick={prevMonth} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-800 text-slate-400 active:bg-slate-700">
                 <ChevronLeft size={18} />
               </button>
-              <h2 className="text-sm font-bold text-slate-800">
+              <h2 className="text-sm font-bold text-white">
                 {monthNames[currentMonthDate.getMonth()]} {currentMonthDate.getFullYear()}
               </h2>
-              <button onClick={nextMonth} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-600 active:bg-slate-200">
+              <button onClick={nextMonth} className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-800 text-slate-400 active:bg-slate-700">
                 <ChevronRightIcon size={18} />
               </button>
             </div>
 
             <div className="grid grid-cols-7 gap-1 mb-2">
               {dayNames.map(day => (
-                <div key={day} className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">{day}</div>
+                <div key={day} className="text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">{day}</div>
               ))}
             </div>
 
@@ -361,10 +359,10 @@ const MobileActivity = () => {
               {renderCalendarDays()}
             </div>
 
-            <div className="mt-6 border-t border-slate-100 pt-4 flex justify-end">
+            <div className="mt-6 border-t border-slate-800 pt-4 flex justify-end">
               <button 
                 onClick={() => { setFilterDate(''); setIsCalendarOpen(false); }}
-                className="text-xs font-bold text-slate-500 bg-slate-50 px-4 py-2 rounded-full active:bg-slate-200"
+                className="text-xs font-bold text-slate-300 bg-slate-800 px-4 py-2 rounded-full active:bg-slate-700"
               >
                 Hapus Filter Tanggal
               </button>
@@ -381,8 +379,8 @@ const MobileActivity = () => {
             onClick={() => setFilterType(type)}
             className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
               filterType === type 
-                ? 'bg-purple-600 text-white shadow-md shadow-purple-200' 
-                : 'bg-white text-slate-500 border border-slate-100 active:bg-slate-50'
+                ? 'bg-[#ccff00] text-slate-900 shadow-[0_0_10px_rgba(204,255,0,0.3)]' 
+                : 'bg-slate-900 text-slate-400 border border-slate-800 active:bg-slate-800'
             }`}
           >
             {type === 'Semua' ? type : `Lari ${type}`}
@@ -393,9 +391,9 @@ const MobileActivity = () => {
       {/* INDIKATOR FILTER TANGGAL AKTIF */}
       {filterDate && (
         <div className="px-5 mb-4 mt-2">
-          <div className="inline-flex items-center gap-2 bg-purple-50 border border-purple-100 px-3 py-2 rounded-xl">
-            <span className="text-xs font-medium text-purple-700">Tampilkan: <span className="font-bold">{new Date(filterDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></span>
-            <button onClick={() => setFilterDate('')} className="text-purple-400 hover:text-purple-600 bg-white rounded-full p-0.5 shadow-sm">
+          <div className="inline-flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl">
+            <span className="text-xs font-medium text-slate-300">Tampilkan: <span className="font-bold text-[#ccff00]">{new Date(filterDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></span>
+            <button onClick={() => setFilterDate('')} className="text-slate-400 hover:text-white bg-slate-800 rounded-full p-0.5 shadow-sm">
               <X size={12} />
             </button>
           </div>
@@ -405,14 +403,14 @@ const MobileActivity = () => {
       {/* DAFTAR AKTIVITAS */}
       <div className="px-5 mt-4 space-y-1">
         {filteredActivities.length === 0 ? (
-          <div className="bg-white rounded-3xl p-10 text-center border border-slate-100 shadow-sm flex flex-col items-center mt-6">
-            <Filter size={40} className="text-slate-200 mb-4" />
-            <p className="text-sm font-bold text-slate-600 mb-1">Aktivitas Tidak Ditemukan</p>
+          <div className="bg-slate-900 rounded-3xl p-10 text-center border border-slate-800 shadow-md flex flex-col items-center mt-6">
+            <Filter size={40} className="text-slate-700 mb-4" />
+            <p className="text-sm font-bold text-white mb-1">Aktivitas Tidak Ditemukan</p>
             <p className="text-xs font-medium text-slate-400">Coba ubah tanggal atau jenis filter di atas.</p>
             {(filterDate || filterType !== 'Semua') && (
               <button 
                 onClick={() => { setFilterDate(''); setFilterType('Semua'); }}
-                className="mt-6 text-xs font-bold text-purple-600 bg-purple-50 px-4 py-2 rounded-full"
+                className="mt-6 text-xs font-bold text-slate-900 bg-[#ccff00] px-4 py-2 rounded-full"
               >
                 Reset Semua Filter
               </button>
@@ -433,14 +431,14 @@ const MobileActivity = () => {
 
       {/* MODAL POP-UP EDIT AKTIVITAS */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end justify-center sm:items-center">
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl transform transition-transform animate-in slide-in-from-bottom-full flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end justify-center sm:items-center">
+          <div className="bg-slate-950 border border-slate-800 w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl transform transition-transform animate-in slide-in-from-bottom-full flex flex-col max-h-[90vh]">
             
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-800 tracking-tight">Edit Aktivitas</h2>
+              <h2 className="text-xl font-bold text-white tracking-tight">Edit Aktivitas</h2>
               <button 
                 onClick={() => setIsEditModalOpen(false)} 
-                className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-slate-500 active:scale-90 transition-transform"
+                className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-slate-400 active:scale-90 transition-transform"
               >
                 <X size={18}/>
               </button>
@@ -482,7 +480,7 @@ const MobileActivity = () => {
 
               <button 
                 type="submit" 
-                className="w-full text-white font-semibold text-base py-4 rounded-2xl shadow-lg shadow-purple-200 mt-2 transition-colors bg-purple-600 active:scale-[0.98]"
+                className="w-full text-slate-900 font-bold text-base py-4 rounded-2xl shadow-[0_0_15px_rgba(204,255,0,0.3)] mt-2 transition-colors bg-[#ccff00] active:scale-[0.98]"
               >
                 Simpan Perubahan
               </button>

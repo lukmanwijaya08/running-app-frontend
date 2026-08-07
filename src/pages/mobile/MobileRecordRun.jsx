@@ -5,9 +5,10 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { ChevronLeft, Play, Square, Pause, MapPin, Activity, Clock, Route as RouteIcon, AlertCircle } from 'lucide-react';
 
-const blueDotIcon = new L.DivIcon({
+// Marker GPS diganti warna volt/kuning neon agar senada
+const voltDotIcon = new L.DivIcon({
   className: 'custom-div-icon',
-  html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+  html: `<div style="background-color: #ccff00; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #0f172a; box-shadow: 0 0 10px rgba(204,255,0,0.8);"></div>`,
   iconSize: [16, 16],
   iconAnchor: [8, 8]
 });
@@ -48,14 +49,13 @@ const MobileRecordRun = () => {
   
   const [distance, setDistance] = useState(0); 
   const [duration, setDuration] = useState(0); 
-  const [currentPace, setCurrentPace] = useState(0); // Detik per km (Real-time)
+  const [currentPace, setCurrentPace] = useState(0); 
   const [errorMessage, setErrorMessage] = useState('');
   
   const watchIdRef = useRef(null);
   const timerRef = useRef(null);
-  const wakeLockRef = useRef(null); // Ref untuk Wake Lock API
+  const wakeLockRef = useRef(null);
 
-  // Fungsi untuk meminta Screen Wake Lock (Layar Anti Mati)
   const requestWakeLock = async () => {
     try {
       if ('wakeLock' in navigator) {
@@ -73,7 +73,6 @@ const MobileRecordRun = () => {
     }
   };
 
-  // Pantau visibilitas dokumen untuk me-request ulang Wake Lock jika tab aktif kembali
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isRecording && !isPaused) {
@@ -107,7 +106,6 @@ const MobileRecordRun = () => {
     return () => clearInterval(timerRef.current);
   }, [isRecording, isPaused]);
 
-  // Efek untuk menghitung Current Pace (Kecepatan Real-time saat ini)
   useEffect(() => {
     if (positions.length >= 2 && !isPaused) {
       const last = positions[positions.length - 1];
@@ -118,8 +116,6 @@ const MobileRecordRun = () => {
 
       if (timeSec > 0) {
         const speedKmH = (dist / timeSec) * 3600;
-        
-        // Jika kecepatan kurang dari 1.5 km/jam, anggap sedang berhenti / diam
         if (speedKmH < 1.5) {
           setCurrentPace(0);
         } else {
@@ -139,7 +135,6 @@ const MobileRecordRun = () => {
     setIsPaused(false);
     setErrorMessage('');
     
-    // Minta layar tetap menyala
     requestWakeLock();
 
     watchIdRef.current = navigator.geolocation.watchPosition(
@@ -173,8 +168,8 @@ const MobileRecordRun = () => {
 
   const pauseRecording = () => {
     setIsPaused(true);
-    setCurrentPace(0); // Set pace ke 0 saat dijeda
-    releaseWakeLock(); // Izinkan layar mati
+    setCurrentPace(0); 
+    releaseWakeLock(); 
     if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
   };
 
@@ -206,7 +201,7 @@ const MobileRecordRun = () => {
         date: now.toISOString(),
         distance: distance,
         movingTime: duration,
-        avgPace: formatAvgPace(), // Simpan Average Pace untuk riwayat keseluruhan
+        avgPace: formatAvgPace(), 
         calories: totalCalories,
         steps: totalSteps,
         positions: positions 
@@ -227,7 +222,6 @@ const MobileRecordRun = () => {
     return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
   };
 
-  // Fungsi memformat Pace Rata-rata (Untuk Data yang Disimpan)
   const formatAvgPace = () => {
     if (distance === 0 || duration === 0) return "00:00";
     const minutesPerKm = (duration / 60) / distance;
@@ -236,7 +230,6 @@ const MobileRecordRun = () => {
     return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
   };
 
-  // Fungsi memformat Pace Real-Time (Untuk Display UI)
   const formatCurrentPaceUI = () => {
     if (!currentPace || currentPace === 0 || !isFinite(currentPace)) return "00:00";
     const m = Math.floor(currentPace / 60);
@@ -247,74 +240,76 @@ const MobileRecordRun = () => {
   const polylinePositions = positions.map(p => [p.lat, p.lon]);
 
   return (
-    <div className="h-screen flex flex-col bg-slate-900 relative">
+    <div className="h-screen flex flex-col bg-slate-950 relative font-sans" style={{ fontFamily: "'Poppins', sans-serif" }}>
       
       {errorMessage && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[100] w-[90%] max-w-sm">
           <div className="bg-red-500/90 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3">
             <AlertCircle size={20} className="shrink-0" />
-            <p className="text-sm font-medium">{errorMessage}</p>
+            <p className="text-sm font-bold">{errorMessage}</p>
           </div>
         </div>
       )}
 
-      <div className="absolute top-0 w-full z-50 px-5 pt-8 pb-4 flex items-center justify-between bg-gradient-to-b from-slate-900/80 to-transparent">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center bg-white/20 backdrop-blur-md rounded-full text-white active:scale-95">
+      <div className="absolute top-0 w-full z-50 px-5 pt-8 pb-4 flex items-center justify-between bg-gradient-to-b from-slate-950/90 to-transparent">
+        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center bg-slate-900/50 backdrop-blur-md rounded-full text-white border border-slate-700 active:scale-95">
           <ChevronLeft size={24} />
         </button>
-        <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full">
-          <MapPin size={14} className="text-purple-400" />
-          <span className="text-xs font-semibold text-white">GPS {currentPosition ? 'Aktif' : 'Mencari...'}</span>
+        <div className="flex items-center gap-2 bg-slate-900/50 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700">
+          <MapPin size={14} className="text-[#ccff00]" />
+          <span className="text-xs font-bold text-white">GPS {currentPosition ? 'Aktif' : 'Mencari...'}</span>
         </div>
       </div>
 
-      <div className="flex-1 w-full bg-slate-800 relative z-0">
+      <div className="flex-1 w-full bg-slate-900 relative z-0">
         {currentPosition ? (
           <MapContainer center={currentPosition} zoom={17} zoomControl={false} style={{ height: '100%', width: '100%' }}>
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {polylinePositions.length > 1 && <Polyline positions={polylinePositions} color="#9333ea" weight={5} lineCap="round" lineJoin="round" />}
-            <Marker position={currentPosition} icon={blueDotIcon} />
+            {/* Menggunakan peta Dark Mode standar (CartoDB DarkMatter) untuk estetika Midnight */}
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+            {/* Garis rute berwarna kuning neon */}
+            {polylinePositions.length > 1 && <Polyline positions={polylinePositions} color="#ccff00" weight={6} lineCap="round" lineJoin="round" />}
+            <Marker position={currentPosition} icon={voltDotIcon} />
             {(isRecording && !isPaused) && <RecenterAutomatically position={currentPosition} />}
           </MapContainer>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
-            <Activity className="animate-pulse mb-3 text-purple-500" size={32} />
-            <p className="text-sm font-medium">Mencari sinyal GPS...</p>
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
+            <Activity className="animate-pulse mb-3 text-[#ccff00]" size={32} />
+            <p className="text-sm font-bold">Mencari sinyal GPS...</p>
           </div>
         )}
       </div>
 
-      <div className="bg-white rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] relative z-10 pt-8 pb-10 px-6 -mt-6">
+      <div className="bg-slate-950 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-slate-800 relative z-10 pt-8 pb-10 px-6 -mt-6">
         <div className="grid grid-cols-3 gap-4 text-center mb-8">
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><RouteIcon size={12}/> Jarak</p>
-            <p className="text-3xl font-bold text-slate-800 tracking-tight">{distance.toFixed(2)}</p>
-            <p className="text-xs font-medium text-slate-500 mt-0.5">km</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1"><RouteIcon size={12}/> Jarak</p>
+            <p className="text-4xl font-black text-white tracking-tighter">{distance.toFixed(2)}</p>
+            <p className="text-xs font-bold text-slate-500 mt-0.5">km</p>
           </div>
-          <div className="border-x border-slate-100">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><Clock size={12}/> Waktu</p>
-            <p className="text-3xl font-bold text-slate-800 tracking-tight">{formatTime(duration)}</p>
+          <div className="border-x border-slate-800">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1"><Clock size={12}/> Waktu</p>
+            <p className="text-4xl font-black text-[#ccff00] tracking-tighter">{formatTime(duration)}</p>
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><Activity size={12}/> Pace</p>
-            <p className="text-3xl font-bold text-slate-800 tracking-tight">{formatCurrentPaceUI()}</p>
-            <p className="text-xs font-medium text-slate-500 mt-0.5">/km</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1"><Activity size={12}/> Pace</p>
+            <p className="text-4xl font-black text-white tracking-tighter">{formatCurrentPaceUI()}</p>
+            <p className="text-xs font-bold text-slate-500 mt-0.5">/km</p>
           </div>
         </div>
 
         <div className="flex justify-center items-center gap-6">
           {!isRecording ? (
-             <button onClick={startRecording} disabled={!currentPosition} className={`w-full py-4 rounded-full font-semibold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${currentPosition ? 'bg-purple-600 text-white shadow-purple-200' : 'bg-slate-200 text-slate-400'}`}>
-                <Play size={24} className={currentPosition ? "fill-white" : ""} /> Mulai Lari
+             <button onClick={startRecording} disabled={!currentPosition} className={`w-full py-4 rounded-full font-black text-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${currentPosition ? 'bg-[#ccff00] text-slate-950 shadow-[0_0_15px_rgba(204,255,0,0.3)]' : 'bg-slate-800 text-slate-600'}`}>
+                <Play size={24} className={currentPosition ? "fill-slate-950" : ""} /> Mulai Lari
              </button>
           ) : (
             <>
               {isPaused ? (
-                <button onClick={resumeRecording} className="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-green-200 active:scale-95 transition-transform"><Play size={32} className="fill-white" /></button>
+                <button onClick={resumeRecording} className="w-20 h-20 bg-green-500 text-slate-950 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(34,197,94,0.4)] active:scale-95 transition-transform"><Play size={32} className="fill-slate-950" /></button>
               ) : (
-                <button onClick={pauseRecording} className="w-20 h-20 bg-orange-400 text-white rounded-full flex items-center justify-center shadow-lg shadow-orange-200 active:scale-95 transition-transform"><Pause size={32} className="fill-white" /></button>
+                <button onClick={pauseRecording} className="w-20 h-20 bg-orange-500 text-slate-950 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.4)] active:scale-95 transition-transform"><Pause size={32} className="fill-slate-950" /></button>
               )}
-              <button onClick={stopRecording} className="w-20 h-20 bg-slate-800 text-white rounded-full flex items-center justify-center shadow-lg shadow-slate-300 active:scale-95 transition-transform"><Square size={28} className="fill-white" /></button>
+              <button onClick={stopRecording} className="w-20 h-20 bg-slate-800 text-white rounded-full flex items-center justify-center border border-slate-700 active:scale-95 transition-transform"><Square size={28} className="fill-white" /></button>
             </>
           )}
         </div>

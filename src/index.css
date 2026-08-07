@@ -6,41 +6,30 @@
 
 @layer base {
   :root {
-    /* Latar Belakang */
-    --background: 210 40% 98%;
-    /* gray-50 */
-    --foreground: 222.2 84% 4.9%;
+    /* Latar Belakang & Teks (Monokrom) */
+    --background: 0 0% 98%; /* Putih Abu terang */
+    --foreground: 222 47% 11%; /* Midnight Black */
 
     /* Area Kartu UI */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
 
-    /* Tema Utama: Ungu (Purple/Violet) dari referensi gambar */
-    --primary: 262.1 83.3% 57.8%;
-    --primary-foreground: 210 40% 98%;
+    /* Tema Utama: Midnight (Hitam/Dark Slate) */
+    --primary: 222 47% 11%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Aksen: Orange/Peach untuk notifikasi/sorotan */
-    --secondary: 24.6 95% 53.1%;
-    --secondary-foreground: 210 40% 98%;
+    /* Aksen Utama: Volt (Kuning Neon) menggantikan Ungu */
+    --accent: 65 100% 50%; /* Hex: #ccff00 */
+    --accent-foreground: 222 47% 11%; /* Teks gelap di atas Neon */
 
-    /* Warna Redup */
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    /* Warna Destruktif / Hapus */
+    /* Warna Destruktif */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    /* Garis dan Input */
+    /* Garis dan Input (Monokrom) */
     --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 262.1 83.3% 57.8%;
+    --ring: 65 100% 50%;
 
-    /* Radius yang sangat membulat khas desain organik */
     --radius: 1.5rem;
   }
 }
@@ -56,8 +45,6 @@
 }
 
 @layer utilities {
-
-  /* Sembunyikan scrollbar untuk carousel tapi tetap bisa di-scroll */
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
