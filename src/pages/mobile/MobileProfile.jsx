@@ -7,14 +7,14 @@ const MobileProfile = () => {
   const fileInputRef = useRef(null);
   
   const [formData, setFormData] = useState({ 
-    name: 'Lukman', height: '172', weight: '68', age: '28', gender: 'L',
+    name: 'Username', height: '172', weight: '68', age: '28', gender: 'L',
     weeklyTarget: '30', targetWeight: '65', mainTarget: 'speed', unitPref: 'km'      
   });
   
   const [photo, setPhoto] = useState("https://i.pravatar.cc/150?img=11");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [accountData, setAccountData] = useState({ email: 'lukman@runapp.com', currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [accountData, setAccountData] = useState({ email: 'user@playonapp.com', currentPassword: '', newPassword: '', confirmPassword: '' });
 
   useEffect(() => {
     const savedProfile = JSON.parse(localStorage.getItem('userProfile'));

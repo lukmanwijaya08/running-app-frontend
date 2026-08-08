@@ -66,12 +66,32 @@ const MobileActivityDetail = () => {
   const [maxElevation, setMaxElevation] = useState(0);
   const [fastestPace, setFastestPace] = useState(9999);
   
+  // STATE BARU: Menyimpan nama kota/lokasi (Default: SEMARANG)
+  const [locationName, setLocationName] = useState("SEMARANG");
+
   const [analytics, setAnalytics] = useState({ cadence: 0, calories: 0, score: 0, analysisText: '', badges: [] });
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [activeSticker, setActiveSticker] = useState(0); 
   const stickerRef = useRef(null);
+
+  // FUNGSI BARU: Reverse Geocoding untuk mendapatkan nama Kota
+  const fetchLocationName = async (lat, lon) => {
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+      const data = await response.json();
+      if (data && data.address) {
+        // Coba ambil kota, kabupaten, atau state
+        const city = data.address.city || data.address.town || data.address.county || data.address.state || "INDONESIA";
+        // Filter nama lokasi (contoh: "Kota Semarang" menjadi "SEMARANG")
+        const cleanName = city.replace(/Kota |Kabupaten /g, '').toUpperCase();
+        setLocationName(cleanName);
+      }
+    } catch (error) {
+      console.error("Gagal mengambil nama lokasi:", error);
+    }
+  };
 
   useEffect(() => {
     const savedRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
@@ -80,6 +100,11 @@ const MobileActivityDetail = () => {
     if (runData) {
       setActivity(runData);
       calculateAnalytics(runData.positions, runData, savedRuns);
+
+      // Trigger fetch lokasi jika ada koordinat rute
+      if (runData.positions && runData.positions.length > 0) {
+        fetchLocationName(runData.positions[0].lat, runData.positions[0].lon);
+      }
     }
   }, [id]);
 
@@ -195,7 +220,6 @@ const MobileActivityDetail = () => {
     const isReceipt = styleType === 'receipt';
     
     const strokeW = isThin ? 8 : (isReceipt ? 16 : 32);
-    // REVISI: Mengubah warna rute di stiker nota menjadi merah mencolok (#ef4444)
     const strokeColor = isThin ? "#ffffff" : (isReceipt ? "#ef4444" : "#ccff00"); 
     const padding = strokeW * 2; 
 
@@ -237,8 +261,8 @@ const MobileActivityDetail = () => {
           cacheBust: true, backgroundColor: 'transparent', pixelRatio: 1, fontEmbedCSS: '', style: { transform: 'scale(1)', transformOrigin: 'top left' } 
         });
         const link = document.createElement('a');
-        const styleNames = ['Route', 'Splits', 'Elevation', 'Code', 'Thin', 'Minimal', 'Receipt'];
-        link.download = `RunApp-${styleNames[activeSticker]}-${activity.id}.png`;
+        const styleNames = ['Route', 'Splits', 'Elevation', 'Code', 'Thin', 'Minimal', 'Receipt', 'Strava'];
+        link.download = `PlayonApp-${styleNames[activeSticker]}-${activity.id}.png`;
         link.href = dataUrl;
         link.click();
       } catch (err) {
@@ -280,7 +304,6 @@ const MobileActivityDetail = () => {
         <div className="w-full h-72 bg-slate-100 relative overflow-hidden flex flex-col items-center justify-end pb-6 rounded-b-[2.5rem] shadow-lg z-0 border-b border-slate-800">
           <MapContainer zoomControl={false} style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0 }}>
              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-             {/* REVISI: Garis rute di peta utama diubah ke warna Merah Mencolok (#ef4444) agar sangat memfokuskan pandangan pengguna */}
              {mapPositions.length > 1 && <Polyline positions={mapPositions} color="#ef4444" weight={6} lineCap="round" lineJoin="round" />}
              <FitBounds positions={mapPositions} />
           </MapContainer>
@@ -335,7 +358,6 @@ const MobileActivityDetail = () => {
 
         <div className="px-5 space-y-4 pb-8">
           
-          {/* ANALISIS PERFORMA SCORE */}
           <div className="bg-slate-900 rounded-3xl p-5 shadow-lg border border-slate-800 flex items-center gap-5">
             <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0">
               <svg className="absolute w-full h-full transform -rotate-90">
@@ -350,7 +372,6 @@ const MobileActivityDetail = () => {
             </div>
           </div>
 
-          {/* SPLIT KILOMETER */}
           <div className="bg-slate-900 rounded-3xl p-6 shadow-lg border border-slate-800">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
               <Activity size={16} className="text-[#ccff00]"/> Split Kilometer
@@ -382,7 +403,6 @@ const MobileActivityDetail = () => {
             </div>
           </div>
 
-          {/* GRAFIK PACE */}
           <div className="bg-slate-900 rounded-3xl p-6 shadow-lg border border-slate-800">
             <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2"><Zap size={16} className="text-[#ccff00]"/> Grafik Pace (per KM)</h3>
             <div className="h-32 w-full min-w-[100px] min-h-[50px]">
@@ -412,7 +432,6 @@ const MobileActivityDetail = () => {
             </div>
           </div>
 
-          {/* GRAFIK ELEVASI */}
           <div className="bg-slate-900 rounded-3xl p-6 shadow-lg border border-slate-800">
             <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2"><TrendingUp size={16} className="text-orange-500"/> Grafik Ketinggian</h3>
             <div className="h-32 w-full min-w-[100px] min-h-[50px]">
@@ -453,15 +472,16 @@ const MobileActivityDetail = () => {
           </div>
 
           <div className="flex items-center justify-between w-full max-w-[420px] mb-8">
-            <button onClick={() => setActiveSticker((prev) => (prev > 0 ? prev - 1 : 6))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90 shrink-0">
+            <button onClick={() => setActiveSticker((prev) => (prev > 0 ? prev - 1 : 7))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90 shrink-0">
               <ChevronLeft size={32} />
             </button>
 
             {/* Area Sticker Preview */}
             <div className="relative w-64 h-[400px] flex justify-center bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl overflow-y-auto overflow-x-hidden hide-scrollbar">
               <div className="origin-top" style={{ transform: 'scale(0.237)', width: '1080px' }}>
-                <div ref={stickerRef} className={`w-[1080px] ${activeSticker === 6 ? 'h-[1687px]' : 'h-fit'} flex flex-col items-center justify-center p-12`} style={{ background: 'transparent' }}>
+                <div ref={stickerRef} className={`w-[1080px] h-fit flex flex-col items-center justify-center ${activeSticker === 6 ? 'p-0' : 'p-12'}`} style={{ background: 'transparent' }}>
                   
+                  {/* STYLE 0 */}
                   {activeSticker === 0 && (
                     <div className="flex flex-col items-center w-full gap-8">
                       <div className="w-full flex justify-center items-center my-4">
@@ -485,6 +505,7 @@ const MobileActivityDetail = () => {
                     </div>
                   )}
 
+                  {/* STYLE 1 */}
                   {activeSticker === 1 && (
                     <div className="w-full h-fit flex flex-col justify-center text-white drop-shadow-[0_10px_10px_rgba(0,0,0,0.9)] pb-8 pt-12">
                       <div className="flex items-center gap-6 mb-12">
@@ -518,6 +539,7 @@ const MobileActivityDetail = () => {
                     </div>
                   )}
 
+                  {/* STYLE 2 */}
                   {activeSticker === 2 && (
                     <div className="w-full h-fit flex flex-col justify-center text-white drop-shadow-[0_10px_10px_rgba(0,0,0,0.9)] pt-12 pb-8">
                       <div className="flex items-center gap-6 mb-10">
@@ -546,6 +568,7 @@ const MobileActivityDetail = () => {
                     </div>
                   )}
 
+                  {/* STYLE 3 */}
                   {activeSticker === 3 && (
                     <div className="w-full h-fit flex flex-col p-8 font-mono text-[42px] leading-relaxed drop-shadow-[0_10px_10px_rgba(0,0,0,0.9)]">
                       <div className="flex gap-4 mb-16 drop-shadow-md">
@@ -571,6 +594,7 @@ const MobileActivityDetail = () => {
                     </div>
                   )}
 
+                  {/* STYLE 4 */}
                   {activeSticker === 4 && (
                     <div className="w-full h-fit flex flex-col items-center justify-center text-white drop-shadow-[0_10px_10px_rgba(0,0,0,0.9)] pb-12">
                       <div className="w-full max-w-[900px] h-[900px] flex items-center justify-center mb-8">
@@ -588,6 +612,7 @@ const MobileActivityDetail = () => {
                     </div>
                   )}
 
+                  {/* STYLE 5 */}
                   {activeSticker === 5 && (
                     <div className="w-full h-fit flex flex-col items-center justify-center text-white pb-8 px-4 text-center drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
                       <Flame className="text-[#ccff00] mx-auto mb-12 drop-shadow-lg" size={160} />
@@ -615,100 +640,148 @@ const MobileActivityDetail = () => {
                     </div>
                   )}
 
-                  {/* REVISI: STICKER 6 - RUN RECEIPT (Nota Kasir) */}
+                  {/* STYLE 6 - RUN RECEIPT */}
                   {activeSticker === 6 && (
-                    <div className="w-[840px] flex flex-col bg-[#fdfbf7] text-slate-800 p-16 relative shadow-[0_20px_50px_rgba(0,0,0,0.6)] font-mono uppercase">
+                    <div className="w-[840px] flex flex-col bg-[#fdfbf7] text-slate-800 relative shadow-[0_20px_50px_rgba(0,0,0,0.6)] font-mono uppercase">
                       
-                      {/* Top zigzag memotong kertas */}
-                      <svg className="w-full h-6 absolute bottom-full left-0 text-[#fdfbf7] transform translate-y-[1px] rotate-180" preserveAspectRatio="none" viewBox="0 0 100 10" fill="currentColor">
-                        <polygon points="0,0 5,10 10,0 15,10 20,0 25,10 30,0 35,10 40,0 45,10 50,0 55,10 60,0 65,10 70,0 75,10 80,0 85,10 90,0 95,10 100,0 100,0 0,0" />
-                      </svg>
+                      <div className="p-16 flex flex-col">
+                        <div className="flex justify-between items-center w-full mb-6">
+                          <div className="flex gap-1 text-black">
+                            <Activity size={48} strokeWidth={2.5} /> 
+                            <Footprints size={48} strokeWidth={2.5} />
+                          </div>
+                          <div className="font-bold text-3xl tracking-widest normal-case">Run Receipt</div>
+                        </div>
+                        
+                        <div className="w-full border-t-[4px] border-dashed border-slate-300 my-8"></div>
+                        
+                        <div className="flex justify-between w-full mb-12">
+                          <div>
+                             <div className="text-5xl font-black tracking-widest mb-3 truncate max-w-[400px]">
+                               {activity.title || "INTERVAL"}
+                             </div>
+                             <div className="text-2xl text-slate-500 font-bold tracking-widest">OUTDOOR RUN</div>
+                          </div>
+                          <div className="text-right">
+                             {/* REVISI: Menggunakan state locationName */}
+                             <div className="text-5xl font-black tracking-widest mb-3">{locationName}</div>
+                             <div className="text-2xl text-slate-500 font-bold tracking-widest">
+                               {new Date(activity.date).toLocaleDateString('en-US', {month: 'short', day: '2-digit', year: 'numeric'})}
+                             </div>
+                          </div>
+                        </div>
 
-                      {/* HEADER RECEIPT */}
-                      <div className="text-center font-black text-5xl mb-2 tracking-widest">RUN RECEIPT</div>
-                      <div className="text-center text-xl font-bold text-slate-500 mb-8 tracking-widest">GENERATED VIA RUNAPP OS</div>
+                        <div className="w-full h-[600px] relative overflow-hidden flex items-center justify-center mb-16 rounded-3xl bg-white">
+                          <div className="absolute inset-0 opacity-[0.06] text-[18px] break-all leading-none text-justify overflow-hidden font-mono text-slate-800 flex flex-wrap content-start">
+                             {"R N R N R U R U N U N R N R U R N U N R N ".repeat(200)}
+                          </div>
+                          <div className="absolute top-6 left-6 bg-white px-5 py-2 font-black text-2xl shadow-sm rounded-xl z-20">
+                            ASCII MAP
+                          </div>
+                          <div className="absolute bottom-6 left-6 bg-white p-4 rounded-2xl shadow-sm z-20">
+                             <Route size={36} className="text-black" />
+                          </div>
+                          <div className="absolute bottom-6 right-6 font-black text-2xl bg-white px-4 py-2 shadow-sm leading-none text-center rounded-xl z-20">
+                             RUN<br/>RUN
+                          </div>
+                          
+                          <div className="z-10 w-full h-full flex p-16">
+                             {renderSvgRoute(activity.positions, 'receipt')}
+                          </div>
+                        </div>
 
-                      <div className="w-full border-t-[4px] border-dashed border-slate-300 my-6"></div>
+                        <div className="grid grid-cols-3 gap-y-12 gap-x-8 w-full text-left mb-16 pl-2">
+                          <div>
+                             <div className="text-xl text-slate-500 font-bold mb-3 tracking-widest">DISTANCE</div>
+                             <div className="text-4xl font-black">{activity.distance.toFixed(2)} KM</div>
+                          </div>
+                          <div>
+                             <div className="text-xl text-slate-500 font-bold mb-3 tracking-widest">AVG PACE</div>
+                             <div className="text-4xl font-black">{activity.avgPace}''</div>
+                          </div>
+                          <div>
+                             <div className="text-xl text-slate-500 font-bold mb-3 tracking-widest">AVG CADENCE</div>
+                             <div className="text-4xl font-black">{analytics.cadence || 0} SPM</div>
+                          </div>
+                          <div>
+                             <div className="text-xl text-slate-500 font-bold mb-3 tracking-widest">DURATION</div>
+                             <div className="text-4xl font-black">{formatTimeStr(activity.movingTime)}</div>
+                          </div>
+                          <div>
+                             <div className="text-xl text-slate-500 font-bold mb-3 tracking-widest">ELEVATION</div>
+                             <div className="text-4xl font-black">{safeMaxElevation}m</div>
+                          </div>
+                          <div>
+                             <div className="text-xl text-slate-500 font-bold mb-3 tracking-widest">CALORIES</div>
+                             <div className="text-4xl font-black">{analytics.calories} KCAL</div>
+                          </div>
+                        </div>
 
-                      <div className="flex justify-between text-2xl font-bold mb-2">
-                        <span>TXN ID</span>
-                        <span>#{activity.id.slice(-8)}</span>
+                        <div className="w-full border-t-[4px] border-dashed border-slate-300 my-8"></div>
+                        
+                        <div className="flex flex-col items-center text-center gap-4 mt-4 mb-4">
+                          <div className="text-xl font-bold tracking-widest text-black">
+                             <div className="mb-2">OFFICE HOUR</div>
+                             <div>MON-SUN 09:44</div>
+                          </div>
+                          <div className="text-3xl font-black mt-8 tracking-widest">
+                             ENDURANCE IS YOUR STRENGTH NOW.
+                          </div>
+                          <div className="text-lg text-slate-400 font-bold mt-6 tracking-widest">
+                             GENERATED LOCALLY VIA PLAYON.APP OS.
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex justify-between text-2xl font-bold mb-2">
-                        <span>DATE</span>
-                        <span>{new Date(activity.date).toLocaleDateString('en-US', {month: 'short', day: '2-digit', year: 'numeric'})}</span>
-                      </div>
-                      <div className="flex justify-between text-2xl font-bold mb-8">
-                        <span>TIME</span>
-                        <span>{new Date(activity.date).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'})}</span>
+
+                      <div className="w-full h-8 overflow-hidden text-[#fdfbf7] rotate-180">
+                         <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 10" fill="currentColor">
+                            <polygon points="0,0 5,10 10,0 15,10 20,0 25,10 30,0 35,10 40,0 45,10 50,0 55,10 60,0 65,10 70,0 75,10 80,0 85,10 90,0 95,10 100,0 100,0 0,0" />
+                         </svg>
                       </div>
 
-                      <div className="w-full border-t-[4px] border-dashed border-slate-300 my-6"></div>
+                    </div>
+                  )}
+
+                  {/* REVISI: STICKER 7 - GAYA STRAVA */}
+                  {activeSticker === 7 && (
+                    <div className="w-[1080px] h-fit flex flex-col justify-end text-white pt-6 px-16 pb-12 relative">
                       
-                      <div className="flex justify-between text-2xl font-black mb-6 tracking-widest text-slate-500">
-                        <span>METRIC</span>
-                        <span>VALUE</span>
+                      {/* Logo dan Nama Aplikasi di Pojok Kiri Atas Area Teks */}
+                      <div className="flex items-center gap-3 drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] mb-20 mt-8">
+                         <div className="w-14 h-14 bg-[#ccff00] rounded-xl flex items-center justify-center text-slate-900 shadow-[0_0_10px_rgba(204,255,0,0.4)]">
+                           <Activity size={32} />
+                         </div>
+                         <span className="text-4xl font-black tracking-widest uppercase text-white drop-shadow-md">PLAYON.APP</span>
                       </div>
 
-                      <div className="space-y-4 text-3xl font-black tracking-wider mb-8">
-                        <div className="flex justify-between">
-                          <span>DISTANCE</span>
-                          <span>{activity.distance.toFixed(2)} KM</span>
+                      <div className="w-full grid grid-cols-3 gap-y-16 gap-x-8 drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]">
+                        <div className="flex flex-col text-left">
+                           <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Jarak</div>
+                           <div className="text-7xl font-black">{activity.distance.toFixed(2)} <span className="text-4xl font-bold text-white/90">km</span></div>
                         </div>
-                        <div className="flex justify-between">
-                          <span>DURATION</span>
-                          <span>{formatTimeStr(activity.movingTime)}</span>
+                        <div className="flex flex-col text-center">
+                           <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Pace</div>
+                           <div className="text-7xl font-black">{activity.avgPace} <span className="text-4xl font-bold text-white/90">/km</span></div>
                         </div>
-                        <div className="flex justify-between">
-                          <span>AVG PACE</span>
-                          <span>{activity.avgPace} /KM</span>
+                        <div className="flex flex-col text-right">
+                           <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Waktu</div>
+                           <div className="text-7xl font-black">{formatTimeStr(activity.movingTime)}</div>
                         </div>
-                        <div className="flex justify-between">
-                          <span>ELEVATION</span>
-                          <span>{safeMaxElevation} M</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>CALORIES</span>
-                          <span>{analytics.calories} KCAL</span>
-                        </div>
-                      </div>
 
-                      <div className="w-full border-t-[4px] border-dashed border-slate-300 my-6"></div>
-
-                      {/* ASCII MAP DENGAN RUTE MERAH */}
-                      <div className="w-full h-[600px] relative overflow-hidden flex items-center justify-center my-10 border-[4px] border-slate-200 bg-white">
-                        <div className="absolute inset-0 opacity-[0.06] text-[18px] break-all leading-none text-justify overflow-hidden font-mono text-slate-800 flex flex-wrap content-start">
-                           {"R N R N R U R U N U N R N R U R N U N R N ".repeat(200)}
+                        <div className="flex flex-col text-left">
+                           <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Kalori</div>
+                           <div className="text-7xl font-black">{analytics.calories} <span className="text-4xl font-bold text-white/90">kcal</span></div>
                         </div>
-                        <div className="z-10 w-full h-full flex p-12">
-                           {renderSvgRoute(activity.positions, 'receipt')}
+                        <div className="flex flex-col text-center">
+                           <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Cadence</div>
+                           <div className="text-7xl font-black">{analytics.cadence || 0} <span className="text-4xl font-bold text-white/90">spm</span></div>
+                        </div>
+                        <div className="flex flex-col text-right">
+                           <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Elevasi</div>
+                           <div className="text-7xl font-black">{safeMaxElevation} <span className="text-4xl font-bold text-white/90">m</span></div>
                         </div>
                       </div>
 
-                      <div className="w-full border-t-[4px] border-dashed border-slate-300 my-6"></div>
-
-                      <div className="flex justify-between text-4xl font-black mt-4 mb-12">
-                        <span>TOTAL EFFORT</span>
-                        <span>100%</span>
-                      </div>
-
-                      {/* BARCODE */}
-                      <div className="flex justify-center mb-8">
-                        <div className="flex h-24 gap-[6px]">
-                          {[4,2,6,2,2,8,2,4,2,6,4,2,8,2,2,6,4,2].map((w, i) => (
-                            <div key={i} className="bg-slate-800" style={{ width: `${w}px` }}></div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="text-center font-bold text-2xl text-slate-500 tracking-widest">
-                        *** KEEP PUSHING YOUR LIMITS ***
-                      </div>
-
-                      {/* Bottom zigzag memotong kertas */}
-                      <svg className="w-full h-8 absolute top-full left-0 text-[#fdfbf7] transform -translate-y-[1px]" preserveAspectRatio="none" viewBox="0 0 100 10" fill="currentColor">
-                        <polygon points="0,0 5,10 10,0 15,10 20,0 25,10 30,0 35,10 40,0 45,10 50,0 55,10 60,0 65,10 70,0 75,10 80,0 85,10 90,0 95,10 100,0 100,0 0,0" />
-                      </svg>
                     </div>
                   )}
 
@@ -716,13 +789,13 @@ const MobileActivityDetail = () => {
               </div>
             </div>
 
-            <button onClick={() => setActiveSticker((prev) => (prev < 6 ? prev + 1 : 0))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90 shrink-0">
+            <button onClick={() => setActiveSticker((prev) => (prev < 7 ? prev + 1 : 0))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90 shrink-0">
               <ChevronRight size={32} />
             </button>
           </div>
 
           <div className="flex justify-center gap-2 mb-6">
-            {[0,1,2,3,4,5,6].map(idx => (
+            {[0,1,2,3,4,5,6,7].map(idx => (
               <div key={idx} className={`w-2 h-2 rounded-full ${activeSticker === idx ? 'bg-[#ccff00] w-6' : 'bg-slate-700'} transition-all`}></div>
             ))}
           </div>

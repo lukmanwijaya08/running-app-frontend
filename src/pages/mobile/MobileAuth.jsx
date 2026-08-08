@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Activity, Zap } from 'lucide-react';
 
+// PERBAIKAN: Menggunakan ../../ untuk naik dua folder ke src/assets/
+import playonLogo from '../../assets/playon-logo.png';
+
 const MobileAuth = () => {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
@@ -22,10 +25,12 @@ const MobileAuth = () => {
 
       <div className="relative z-10 w-full max-w-sm mx-auto">
         <div className="flex flex-col items-center mb-10">
-          <div className="w-16 h-16 bg-[#ccff00] rounded-2xl flex items-center justify-center text-slate-950 shadow-[0_0_20px_rgba(204,255,0,0.4)] mb-4 transform rotate-12">
-            <Activity size={32} className="-rotate-12" />
-          </div>
-          <h1 className="text-4xl font-black text-white tracking-tighter">RUNAPP</h1>
+          <img 
+            src={playonLogo} 
+            alt="Logo Playon.App" 
+            className="w-24 h-24 object-contain mb-4 drop-shadow-[0_0_15px_rgba(204,255,0,0.3)]" 
+          />
+          <h1 className="text-4xl font-black text-white tracking-tighter">PlayonApp</h1>
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-2">Lacak & Kuasai Jalanan</p>
         </div>
 

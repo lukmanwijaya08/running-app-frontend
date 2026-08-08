@@ -2,10 +2,33 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RunApp</title>
-    <!-- Tambahkan 3 baris ini untuk Font Poppins -->
+
+    <!-- 1. IKON TAB BROWSER (Favicon) - Gunakan gambar transparan -->
+    <!-- File playon-favicon.png harus ada di dalam folder public/ -->
+    <link rel="icon" type="image/png" href="public/playon-logo.png" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>PlayonApp - Lacak & Kuasai Jalanan</title>
+
+    <!-- ========================================== -->
+    <!-- KONFIGURASI PWA KHUSUS APPLE / IOS         -->
+    <!-- ========================================== -->
+
+    <!-- 2. IKON HOME SCREEN IPHONE - Gunakan gambar dengan background solid -->
+    <!-- File apple-touch-icon.png harus ada di dalam folder public/ -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta name="apple-mobile-web-app-title" content="PlayonApp" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+
+    <!-- Font Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
