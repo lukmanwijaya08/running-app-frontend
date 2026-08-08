@@ -13,6 +13,7 @@ import MobileTraining from './pages/mobile/MobileTraining';
 import MobileRecovery from './pages/mobile/MobileRecovery';
 import MobileStats from './pages/mobile/MobileStats';
 import MobilePR from './pages/mobile/MobilePR';
+import MobileChallenges from './pages/mobile/MobileChallenges';
 
 // Import halaman Record Run yang baru dibuat
 import MobileRecordRun from './pages/mobile/MobileRecordRun'; 
@@ -41,7 +42,7 @@ function App() {
         <Route path="/mobile/recovery" element={<MobileRecovery />} />
         <Route path="/mobile/stats" element={<MobileStats />} />
         <Route path="/mobile/pr" element={<MobilePR />} />
-        
+        <Route path="/mobile/challenges" element={<MobileChallenges />} />
         {/* Rute baru untuk fitur Live Tracking / Rekam Lari */}
         <Route path="/mobile/record-run" element={<MobileRecordRun />} />
         
