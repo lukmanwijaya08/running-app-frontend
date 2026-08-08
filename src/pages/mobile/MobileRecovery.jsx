@@ -60,7 +60,7 @@ const MobileRecovery = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 pb-24 text-white font-sans" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-screen bg-slate-950 pb-24 text-white font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
       
       {/* HEADER FIXED */}
       <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-950/90 backdrop-blur-md z-40 px-5 h-16 flex items-center justify-between border-b border-slate-900">

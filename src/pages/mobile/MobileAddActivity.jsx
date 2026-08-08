@@ -194,7 +194,7 @@ const MobileAddActivity = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 pb-10 relative text-white font-sans" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-screen bg-slate-950 pb-10 relative text-white font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
       {errorMessage && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[100] w-[90%] max-w-sm">
           <div className="bg-red-500/90 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3 border border-red-400">

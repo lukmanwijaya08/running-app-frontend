@@ -289,7 +289,7 @@ const MobileActivityDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 pb-10 text-white font-sans" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-screen bg-slate-950 pb-10 text-white font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
       
       {/* HEADER */}
       <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-950/90 backdrop-blur-md z-50 px-5 h-16 flex items-center justify-between border-b border-slate-900">
@@ -749,9 +749,9 @@ const MobileActivityDetail = () => {
                       {/* Logo dan Nama Aplikasi di Pojok Kiri Atas Area Teks */}
                       <div className="flex items-center gap-3 drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] mb-20 mt-8">
                          <div className="w-14 h-14 bg-[#ccff00] rounded-xl flex items-center justify-center text-slate-900 shadow-[0_0_10px_rgba(204,255,0,0.4)]">
-                           <Activity size={32} />
+                           <Activity size={50} />
                          </div>
-                         <span className="text-4xl font-black tracking-widest uppercase text-white drop-shadow-md">PLAYON.APP</span>
+                         <span className="text-6xl font-black tracking-widest uppercase text-white drop-shadow-md">PLAYON.APP</span>
                       </div>
 
                       <div className="w-full grid grid-cols-3 gap-y-16 gap-x-8 drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]">
@@ -759,11 +759,11 @@ const MobileActivityDetail = () => {
                            <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Jarak</div>
                            <div className="text-7xl font-black">{activity.distance.toFixed(2)} <span className="text-4xl font-bold text-white/90">km</span></div>
                         </div>
-                        <div className="flex flex-col text-center">
+                        <div className="flex flex-col text-left">
                            <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Pace</div>
                            <div className="text-7xl font-black">{activity.avgPace} <span className="text-4xl font-bold text-white/90">/km</span></div>
                         </div>
-                        <div className="flex flex-col text-right">
+                        <div className="flex flex-col text-left">
                            <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Waktu</div>
                            <div className="text-7xl font-black">{formatTimeStr(activity.movingTime)}</div>
                         </div>
@@ -772,11 +772,11 @@ const MobileActivityDetail = () => {
                            <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Kalori</div>
                            <div className="text-7xl font-black">{analytics.calories} <span className="text-4xl font-bold text-white/90">kcal</span></div>
                         </div>
-                        <div className="flex flex-col text-center">
+                        <div className="flex flex-col text-left">
                            <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Cadence</div>
                            <div className="text-7xl font-black">{analytics.cadence || 0} <span className="text-4xl font-bold text-white/90">spm</span></div>
                         </div>
-                        <div className="flex flex-col text-right">
+                        <div className="flex flex-col text-left">
                            <div className="text-3xl font-bold uppercase tracking-widest text-white/80 mb-2">Elevasi</div>
                            <div className="text-7xl font-black">{safeMaxElevation} <span className="text-4xl font-bold text-white/90">m</span></div>
                         </div>

@@ -43,9 +43,10 @@ const MobileHome = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const [recentActivities, setRecentActivities] = useState([]);
-  
-  // STATE BARU: Untuk menyimpan nama lokasi dinamis
   const [locationName, setLocationName] = useState("Mencari lokasi...");
+  
+  // STATE BARU: Mengontrol Tooltip kalender mana yang terbuka saat disentuh
+  const [activeTooltip, setActiveTooltip] = useState(null);
   
   const [userData, setUserData] = useState({ 
     name: 'Pelari', weeklyTarget: 30, height: 170, weight: 70, gender: 'L', mainTarget: 'speed'
@@ -74,21 +75,17 @@ const MobileHome = () => {
   const idealWeight = calculateIdealWeight(userData.height, userData.gender);
   const runningScore = Math.min(Math.round(((weeklyStats.distance / userData.weeklyTarget) * 60) + ((weeklyStats.count / 4) * 40)), 100) || 0;
 
-  // FUNGSI BARU: Mengambil Lokasi GPS Pengguna
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
             const { latitude, longitude } = position.coords;
-            // Menggunakan Nominatim API untuk Reverse Geocoding
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
             const data = await response.json();
             
             if (data && data.address) {
-              // Ambil kota, kabupaten, atau state terdekat
               const city = data.address.city || data.address.town || data.address.county || data.address.state || "LOKASI DITEMUKAN";
-              // Hilangkan kata "Kota" atau "Kabupaten" agar lebih rapi
               const cleanName = city.replace(/Kota |Kabupaten /g, '').toUpperCase();
               setLocationName(cleanName);
             }
@@ -219,7 +216,7 @@ const MobileHome = () => {
   }, [progressPercentage]);
 
   return (
-    <div className="pt-8 px-5 min-h-screen bg-slate-950 pb-24 font-sans text-white" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="pt-8 px-5 min-h-screen bg-slate-950 pb-24 font-sans text-white" style={{ fontFamily: "'Inter', sans-serif" }}>
       
       {/* HEADER DENGAN LOKASI DINAMIS */}
       <header className="flex items-center justify-between mb-8">
@@ -245,53 +242,76 @@ const MobileHome = () => {
       ) : (
         <div className="animate-in fade-in duration-500">
           
-          {/* 1. CAROUSEL MINGGUAN UTAMA */}
-          <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory hide-scrollbar -mx-5 px-5">
+          {/* 1. CAROUSEL MINGGUAN UTAMA (DESAIN IOS BARU) */}
+          <div className="flex overflow-x-auto gap-4 pb-8 snap-x snap-mandatory hide-scrollbar -mx-5 px-5">
 
-            {/* TARGET MINGGUAN */}
-            <div className="min-w-[85%] snap-center shrink-0 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-lg text-white flex flex-col justify-between relative overflow-hidden">
-              <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-[#ccff00]/10 rounded-full blur-2xl pointer-events-none"></div>
-              <div className="flex items-center gap-2 mb-4 relative z-10">
-                <Target size={18} className="text-[#ccff00]" />
-                <h2 className="text-sm font-bold text-white">Target Mingguan</h2>
+            {/* KARTU 1: TARGET MINGGUAN */}
+            <div className="min-w-[88%] h-[260px] snap-center shrink-0 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-between p-6 border border-slate-700/50">
+              <img src="https://images.unsplash.com/photo-1571008887538-b36bb32f4571?auto=format&fit=crop&q=80&w=800" alt="Running Runner" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-slate-900/20"></div>
+              
+              <div className="relative z-10 flex justify-between items-start">
+                 <div className="px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
+                    <Target size={14} className="text-[#ccff00]" />
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Target Mingguan</span>
+                 </div>
               </div>
-              <div className="relative z-10">
-                <div className="flex justify-between items-end mb-2">
-                  <span className="text-4xl font-black tracking-tighter">{weeklyStats.distance.toFixed(1)} <span className="text-sm font-bold text-slate-500">/ {userData.weeklyTarget} km</span></span>
+
+              <div className="relative z-10 bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-5">
+                <div className="flex justify-between items-end mb-3">
+                  <span className="text-4xl font-black tracking-tighter text-white drop-shadow-md">
+                    {weeklyStats.distance.toFixed(1)} <span className="text-base font-bold text-white/70">/ {userData.weeklyTarget} km</span>
+                  </span>
                 </div>
-                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mt-3">
-                  <div className="h-full bg-[#ccff00] rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(204,255,0,0.6)]" style={{ width: `${Math.min((weeklyStats.distance / userData.weeklyTarget) * 100, 100)}%` }}></div>
+                <div className="h-2.5 w-full bg-black/50 rounded-full overflow-hidden border border-white/5">
+                  <div className="h-full bg-[#ccff00] rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(204,255,0,0.8)]" style={{ width: `${Math.min((weeklyStats.distance / userData.weeklyTarget) * 100, 100)}%` }}></div>
                 </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-3">{(userData.weeklyTarget - weeklyStats.distance) > 0 ? `${(userData.weeklyTarget - weeklyStats.distance).toFixed(1)} km tersisa untuk target.` : 'Target mingguan tercapai! 🎉'}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/80 mt-3">
+                  {(userData.weeklyTarget - weeklyStats.distance) > 0 ? `${(userData.weeklyTarget - weeklyStats.distance).toFixed(1)} km tersisa untuk target.` : 'Target mingguan tercapai! 🎉'}
+                </p>
               </div>
             </div>
             
-            {/* KONSISTENSI 7 HARI TERAKHIR */}
-            <div className="min-w-[85%] snap-center shrink-0 bg-slate-900 rounded-3xl p-6 shadow-lg flex items-center gap-5 border border-slate-800">
-              <div className="relative w-20 h-20 flex-shrink-0">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle cx="40" cy="40" r={35} stroke="#1e293b" strokeWidth="8" fill="transparent" />
-                  <circle cx="40" cy="40" r={35} stroke="#ccff00" strokeWidth="8" fill="transparent" strokeDasharray={219} strokeDashoffset={219 - (Math.min(weeklyStats.count / 7, 1)) * 219} strokeLinecap="round" className="drop-shadow-[0_0_5px_rgba(204,255,0,0.5)]" />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-sm font-black text-white">{Math.round((weeklyStats.count / 7) * 100)}%</span>
-                </div>
+            {/* KARTU 2: KONSISTENSI 7 HARI */}
+            <div className="min-w-[88%] h-[260px] snap-center shrink-0 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-between p-6 border border-slate-700/50">
+              <img src="https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&q=80&w=800" alt="Running Shoes" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/70 to-slate-900/30"></div>
+              
+              <div className="relative z-10 flex justify-between items-start">
+                 <div className="px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
+                    <CalendarDays size={14} className="text-[#ccff00]" />
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Konsistensi</span>
+                 </div>
               </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-1.5 mb-2.5">
-                  <CalendarDays size={16} className="text-[#ccff00]" />
-                  <h2 className="text-xs font-bold text-white">Konsistensi</h2>
+
+              <div className="relative z-10 flex items-center gap-4 bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-4">
+                <div className="relative w-16 h-16 flex-shrink-0">
+                  <svg className="w-full h-full transform -rotate-90 drop-shadow-md">
+                    <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.1)" strokeWidth="6" fill="transparent" />
+                    <circle cx="32" cy="32" r="28" stroke="#ccff00" strokeWidth="6" fill="transparent" strokeDasharray={175} strokeDashoffset={175 - (Math.min(weeklyStats.count / 7, 1)) * 175} strokeLinecap="round" className="drop-shadow-[0_0_8px_rgba(204,255,0,0.6)]" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-sm font-black text-white">{Math.round((weeklyStats.count / 7) * 100)}%</span>
+                  </div>
                 </div>
+
                 <div className="flex justify-between items-center w-full">
                   {consistencyDays.slice(2, 7).map((d, i) => (
-                    <div key={i} className="flex flex-col items-center gap-1.5 relative group cursor-pointer">
-                      <span className={`text-[9px] font-bold ${d.isToday ? 'text-[#ccff00]' : 'text-slate-500'}`}>{d.day}</span>
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black transition-all ${d.active ? 'bg-[#ccff00] text-slate-950 shadow-[0_0_8px_rgba(204,255,0,0.5)]' : (d.isToday ? 'border-2 border-[#ccff00]/50 text-[#ccff00] bg-slate-900' : 'text-slate-500 bg-slate-800')}`}>
+                    <div 
+                      key={i} 
+                      className="flex flex-col items-center gap-1.5 relative cursor-pointer"
+                      onClick={() => {
+                        if(d.active) setActiveTooltip(activeTooltip === i ? null : i);
+                      }}
+                    >
+                      <span className={`text-[9px] font-bold ${d.isToday ? 'text-[#ccff00]' : 'text-white/70'}`}>{d.day}</span>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all ${d.active ? 'bg-[#ccff00] text-slate-950 shadow-[0_0_10px_rgba(204,255,0,0.6)]' : (d.isToday ? 'border border-[#ccff00] text-[#ccff00] bg-black/50' : 'text-white/50 bg-black/30 border border-white/10')}`}>
                         {d.date}
                       </div>
-                      {/* Tooltip */}
-                      {d.active && (
-                        <div className="absolute bottom-full mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-active:opacity-100 group-active:visible transition-all duration-200 flex flex-col items-center bg-slate-800 text-white p-2 rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none border border-slate-700">
+                      
+                      {/* Tooltip Interaktif untuk Layar Sentuh */}
+                      {d.active && activeTooltip === i && (
+                        <div className="absolute bottom-full mb-2 flex flex-col items-center bg-slate-800 text-white p-2 rounded-xl shadow-xl whitespace-nowrap z-50 border border-slate-700 animate-in fade-in zoom-in-95 duration-200">
                           <span className="text-xs font-black text-[#ccff00] mb-0.5">{d.distance.toFixed(1)} km</span>
                           <span className="text-[10px] text-slate-300 font-bold flex items-center gap-1"><Clock size={10}/> {formatTimeStr(d.duration)}</span>
                           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
@@ -303,43 +323,60 @@ const MobileHome = () => {
               </div>
             </div>
 
-            {/* STATISTIK MINGGUAN */}
-            <div className="min-w-[85%] snap-center shrink-0 bg-slate-900 rounded-3xl p-6 shadow-lg flex flex-col justify-between border border-slate-800">
-              <div className="flex items-center gap-2 mb-4">
-                <Activity size={18} className="text-[#ccff00]" />
-                <h2 className="text-sm font-bold text-white">Aktivitas Mingguan</h2>
+            {/* KARTU 3: AKTIVITAS MINGGUAN */}
+            <div className="min-w-[88%] h-[260px] snap-center shrink-0 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-between p-6 border border-slate-700/50">
+              <img src="https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&q=80&w=800" alt="Running Track" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-slate-900/20"></div>
+              
+              <div className="relative z-10 flex justify-between items-start">
+                 <div className="px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
+                    <Activity size={14} className="text-[#ccff00]" />
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Aktivitas Mingguan</span>
+                 </div>
               </div>
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className="text-4xl font-black text-white tracking-tighter">{weeklyStats.distance.toFixed(1)}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Kilometer</p>
+
+              <div className="relative z-10 bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-5">
+                <div className="flex justify-between items-end mb-4 border-b border-white/10 pb-4">
+                  <div>
+                    <p className="text-4xl font-black text-white tracking-tighter drop-shadow-md">{weeklyStats.distance.toFixed(1)}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/70 mt-1">Kilometer</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-black text-white drop-shadow-md">{formatTimeStr(weeklyStats.duration)}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/70 mt-1">Waktu Lari</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-black text-white">{formatTimeStr(weeklyStats.duration)}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Waktu Lari</p>
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/90">
+                  <Route size={14} className="text-[#ccff00]" />
+                  <span>{weeklyStats.count} Total Aktivitas Minggu Ini</span>
                 </div>
-              </div>
-              <div className="mt-5 pt-4 border-t border-slate-800 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                <Route size={14} className="text-[#ccff00]" />
-                <span>{weeklyStats.count} Total Aktivitas Minggu Ini</span>
               </div>
             </div>
 
-            {/* RUNNING SCORE MINGGUAN */}
-            <div className="min-w-[85%] snap-center shrink-0 bg-slate-900 rounded-3xl p-6 shadow-lg border border-slate-800 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Medal size={16} className="text-[#ccff00]" />
-                  <h2 className="text-sm font-bold text-white">Running Score</h2>
-                </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Performa Minggu Ini</p>
+            {/* KARTU 4: RUNNING SCORE (DIPERBAIKI) */}
+            <div className="min-w-[88%] h-[260px] snap-center shrink-0 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-between p-6 border border-slate-700/50">
+              <img src="https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=800" alt="Running Performance" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/70 to-slate-900/30"></div>
+              
+              <div className="relative z-10 flex justify-between items-start">
+                 <div className="px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
+                    <Medal size={14} className="text-[#ccff00]" />
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Running Score</span>
+                 </div>
               </div>
-              <div className="relative w-16 h-16 flex items-center justify-center">
-                <svg className="absolute w-full h-full transform -rotate-90">
-                  <circle cx="32" cy="32" r="28" stroke="#1e293b" strokeWidth="6" fill="transparent" />
-                  <circle cx="32" cy="32" r="28" stroke="#ccff00" strokeWidth="6" fill="transparent" strokeDasharray={175} strokeDashoffset={175 - (runningScore / 100) * 175} strokeLinecap="round" className="drop-shadow-[0_0_5px_rgba(204,255,0,0.5)]" />
-                </svg>
-                <span className="text-xl font-black text-white">{runningScore}</span>
+
+              <div className="relative z-10 flex items-center justify-between bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-5">
+                <div>
+                  <h2 className="text-xl font-black text-white mb-1 drop-shadow-md">Performa Anda</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/70">Kalkulasi Minggu Ini</p>
+                </div>
+                <div className="relative w-20 h-20 flex items-center justify-center bg-black/30 rounded-full border border-white/10">
+                  <svg className="absolute w-full h-full transform -rotate-90">
+                    <circle cx="40" cy="40" r="34" stroke="rgba(255,255,255,0.1)" strokeWidth="6" fill="transparent" />
+                    <circle cx="40" cy="40" r="34" stroke="#ccff00" strokeWidth="6" fill="transparent" strokeDasharray={213} strokeDashoffset={213 - (runningScore / 100) * 213} strokeLinecap="round" className="drop-shadow-[0_0_8px_rgba(204,255,0,0.6)]" />
+                  </svg>
+                  <span className="text-2xl font-black text-white">{runningScore}</span>
+                </div>
               </div>
             </div>
 
@@ -349,10 +386,10 @@ const MobileHome = () => {
           <div className="mb-8 mt-2">
             <div className="grid grid-cols-4 gap-3">
               {[
-                { title: 'Latihan', icon: Target, route: '/mobile/training', color: 'text-blue-400', bg: 'bg-blue-900/30 border border-blue-800' },
-                { title: 'Recovery', icon: ShieldPlus, route: '/mobile/recovery', color: 'text-emerald-400', bg: 'bg-emerald-900/30 border border-emerald-800' },
-                { title: 'Statistik', icon: BarChart2, route: '/mobile/stats', color: 'text-purple-400', bg: 'bg-purple-900/30 border border-purple-800' },
-                { title: 'Rekor', icon: Trophy, route: '/mobile/pr', color: 'text-amber-400', bg: 'bg-amber-900/30 border border-amber-800' }
+                { title: 'Latihan', icon: Target, route: '/mobile/training', color: 'text-blue-400', bg: 'bg-slate-900 border border-slate-800' },
+                { title: 'Recovery', icon: ShieldPlus, route: '/mobile/recovery', color: 'text-emerald-400', bg: 'bg-slate-900 border border-slate-800' },
+                { title: 'Statistik', icon: BarChart2, route: '/mobile/stats', color: 'text-purple-400', bg: 'bg-slate-900 border border-slate-800' },
+                { title: 'Rekor', icon: Trophy, route: '/mobile/pr', color: 'text-amber-400', bg: 'bg-slate-900 border border-slate-800' }
               ].map((item, idx) => (
                 <div key={idx} onClick={() => navigate(item.route)} className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform group">
                   <div className={`w-14 h-14 rounded-[1.25rem] ${item.bg} flex items-center justify-center shadow-lg`}>
@@ -369,7 +406,7 @@ const MobileHome = () => {
           <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory hide-scrollbar -mx-5 px-5">
             
             {/* KARTU 1: TARGET HARIAN */}
-            <div className="w-[calc(100vw-40px)] snap-center shrink-0 bg-slate-900 rounded-3xl p-6 shadow-lg flex flex-col items-center border border-slate-800 relative">
+            <div className="w-[calc(100vw-40px)] snap-center shrink-0 bg-slate-900 rounded-[2rem] p-6 shadow-lg flex flex-col items-center border border-slate-800 relative">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-6 mt-2">Target Harian</p>
               <div className="relative w-40 h-40 flex items-center justify-center mb-8">
                 <svg className="w-full h-full transform -rotate-90">
@@ -403,7 +440,7 @@ const MobileHome = () => {
             {/* KARTU 2: PROGRESS BERAT BADAN */}
             <div 
               onClick={() => navigate('/mobile/diet')}
-              className="w-[calc(100vw-40px)] snap-center shrink-0 bg-slate-900 rounded-3xl p-6 shadow-lg flex flex-col border border-slate-800 justify-between cursor-pointer active:scale-[0.98] transition-transform"
+              className="w-[calc(100vw-40px)] snap-center shrink-0 bg-slate-900 rounded-[2rem] p-6 shadow-lg flex flex-col border border-slate-800 justify-between cursor-pointer active:scale-[0.98] transition-transform"
             >
               <div className="text-center">
                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-6 mt-2 flex items-center justify-center gap-1">
@@ -446,17 +483,17 @@ const MobileHome = () => {
 
           </div>
 
-          {/* 3. PERSONAL RECORD TERBARU & CHALLENGE */}
+          {/* 3. PERSONAL RECORD TERBARU */}
           <h2 className="text-sm font-bold text-white tracking-tight mb-3 px-1 mt-2">Personal Records</h2>
           <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-lg flex flex-col justify-center">
+            <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 shadow-lg flex flex-col justify-center">
                <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center mb-4 text-[#ccff00]">
                  <Trophy size={18} />
                </div>
                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Terjauh (PR)</p>
                <h3 className="text-2xl font-black text-white tracking-tighter">{personalRecords.longestDist.toFixed(2)} <span className="text-sm font-bold text-slate-500 tracking-normal">km</span></h3>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-lg flex flex-col justify-center">
+            <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 shadow-lg flex flex-col justify-center">
                <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center mb-4 text-orange-500">
                  <Zap size={18} />
                </div>
@@ -467,8 +504,8 @@ const MobileHome = () => {
 
           {/* CHALLENGE BANNER */}
           <div 
-            onClick={() => navigate('/mobile/challenges')} // Rute menuju daftar tantangan (gamifikasi)
-            className="bg-slate-900 rounded-3xl p-5 mb-8 shadow-lg border border-slate-800 flex items-center justify-between relative overflow-hidden cursor-pointer active:scale-95 transition-transform"
+            onClick={() => navigate('/mobile/challenges')}
+            className="bg-slate-900 rounded-[2rem] p-5 mb-8 shadow-lg border border-slate-800 flex items-center justify-between relative overflow-hidden cursor-pointer active:scale-95 transition-transform"
           >
              <div>
                <div className="flex items-center gap-1.5 mb-1">
@@ -483,7 +520,7 @@ const MobileHome = () => {
              </div>
           </div>
 
-          {/* 4. AKTIVITAS TERBARU (DENGAN IMPLEMENTASI EMPTY STATES) */}
+          {/* 4. AKTIVITAS TERBARU */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-5 px-1">
               <h2 className="text-lg font-bold text-white tracking-tight">Aktivitas Terbaru</h2>
@@ -492,8 +529,7 @@ const MobileHome = () => {
 
             <div className="space-y-4">
               {recentActivities.length === 0 ? (
-                // IMPLEMENTASI EMPTY STATE MOTIVASIONAL
-                <div className="bg-slate-900 rounded-[2rem] p-8 border border-slate-800 shadow-lg flex flex-col items-center justify-center text-center mt-2 mx-1">
+                <div className="bg-slate-900 rounded-[2.5rem] p-8 border border-slate-800 shadow-lg flex flex-col items-center justify-center text-center mt-2 mx-1">
                   <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-5 relative border border-slate-700">
                     <div className="absolute inset-0 border border-[#ccff00]/30 rounded-full animate-ping"></div>
                     <Footprints size={28} className="text-[#ccff00]" />
@@ -515,7 +551,7 @@ const MobileHome = () => {
                   const dateString = runDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
                   
                   return (
-                    <div key={activity.id} onClick={() => navigate(`/mobile/activity/${activity.id}`)} className="bg-slate-900 rounded-3xl p-4 shadow-lg border border-slate-800 flex flex-col gap-4 cursor-pointer active:scale-[0.98] transition-transform">
+                    <div key={activity.id} onClick={() => navigate(`/mobile/activity/${activity.id}`)} className="bg-slate-900 rounded-[2rem] p-4 shadow-lg border border-slate-800 flex flex-col gap-4 cursor-pointer active:scale-[0.98] transition-transform">
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center border border-slate-700">

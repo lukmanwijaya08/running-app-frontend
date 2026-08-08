@@ -2,30 +2,43 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="public/playon-logo.png" />
-
+    <link rel="icon" type="image/png" href="/playon-favicon.png" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>PlayonApp - Lacak & Kuasai Jalanan</title>
 
-    <link rel="apple-touch-icon" href="public/apple-touch-icon.png" />
-
+    <!-- ========================================== -->
+    <!-- KONFIGURASI PWA KHUSUS APPLE / IOS         -->
+    <!-- ========================================== -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="PlayonApp" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta
-      name="apple-mobile-web-app-status-bar-style"
-      content="black-translucent"
-    />
 
-    <!-- Font Poppins -->
+    <!-- PERBAIKAN 1: Memaksa Status Bar iOS menjadi Hitam Pekat -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+
+    <!-- PERBAIKAN 2: Memberitahu browser untuk menggunakan tema gelap -->
+    <meta name="theme-color" content="#020617" />
+
+    <!-- Font Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
+
+    <!-- PERBAIKAN 3: Memberikan warna dasar gelap pada body agar tidak ada sela putih yang bocor -->
+    <style>
+      body,
+      html {
+        background-color: #020617; /* Warna background Slate-950 Tailwind */
+        margin: 0;
+        padding: 0;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

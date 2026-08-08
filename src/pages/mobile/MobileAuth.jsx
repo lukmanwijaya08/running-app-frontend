@@ -18,7 +18,7 @@ const MobileAuth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center px-6 pb-12 relative overflow-hidden font-sans" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-center px-6 pb-12 relative overflow-hidden font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Background Ornaments */}
       <div className="absolute -top-20 -right-20 w-64 h-64 bg-slate-800 rounded-full opacity-50 blur-3xl"></div>
       <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-[#ccff00]/10 rounded-full opacity-50 blur-3xl"></div>

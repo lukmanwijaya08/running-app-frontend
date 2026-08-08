@@ -240,7 +240,7 @@ const MobileRecordRun = () => {
   const polylinePositions = positions.map(p => [p.lat, p.lon]);
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 relative font-sans" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="h-screen flex flex-col bg-slate-950 relative font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
       
       {errorMessage && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[100] w-[90%] max-w-sm">

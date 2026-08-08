@@ -63,7 +63,7 @@ const MobileProfile = () => {
   };
 
   return (
-    <div className="pt-8 px-5 pb-24 bg-slate-950 min-h-screen text-white font-sans" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="pt-8 px-5 pb-24 bg-slate-950 min-h-screen text-white font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
       
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-xl font-bold tracking-tight">Profil Saya</h1>
