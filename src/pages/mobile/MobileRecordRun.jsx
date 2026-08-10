@@ -5,12 +5,12 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { ChevronLeft, Play, Square, Pause, MapPin, Activity, Clock, Route as RouteIcon, AlertCircle } from 'lucide-react';
 
-// Marker GPS diganti warna volt/kuning neon agar senada
-const voltDotIcon = new L.DivIcon({
+// Marker GPS diubah menjadi gaya titik biru (Blue Dot) khas iOS agar sangat kontras di peta terang
+const iosBlueDotIcon = new L.DivIcon({
   className: 'custom-div-icon',
-  html: `<div style="background-color: #ccff00; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #0f172a; box-shadow: 0 0 10px rgba(204,255,0,0.8);"></div>`,
-  iconSize: [16, 16],
-  iconAnchor: [8, 8]
+  html: `<div style="background-color: #3b82f6; width: 18px; height: 18px; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 0 12px rgba(59,130,246,0.8);"></div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9]
 });
 
 const RecenterAutomatically = ({ position }) => {
@@ -240,76 +240,84 @@ const MobileRecordRun = () => {
   const polylinePositions = positions.map(p => [p.lat, p.lon]);
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 relative font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="h-screen flex flex-col bg-slate-950 relative font-sans selection:bg-[#ccff00] selection:text-slate-900" style={{ fontFamily: "'Inter', sans-serif" }}>
       
       {errorMessage && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[100] w-[90%] max-w-sm">
           <div className="bg-red-500/90 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3">
             <AlertCircle size={20} className="shrink-0" />
-            <p className="text-sm font-bold">{errorMessage}</p>
+            <p className="text-sm font-semibold">{errorMessage}</p>
           </div>
         </div>
       )}
 
-      <div className="absolute top-0 w-full z-50 px-5 pt-8 pb-4 flex items-center justify-between bg-gradient-to-b from-slate-950/90 to-transparent">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center bg-slate-900/50 backdrop-blur-md rounded-full text-white border border-slate-700 active:scale-95">
+      {/* HEADER NAV */}
+      <div className="absolute top-0 w-full z-50 px-4 pt-8 pb-4 flex items-center justify-between bg-gradient-to-b from-slate-950/80 to-transparent pointer-events-none">
+        <button onClick={() => navigate(-1)} className="pointer-events-auto w-10 h-10 flex items-center justify-center bg-slate-900/60 backdrop-blur-xl rounded-full text-white active:scale-95 transition-transform border border-white/10 shadow-sm">
           <ChevronLeft size={24} />
         </button>
-        <div className="flex items-center gap-2 bg-slate-900/50 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700">
+        <div className="pointer-events-auto flex items-center gap-2 bg-slate-900/60 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10 shadow-sm">
           <MapPin size={14} className="text-[#ccff00]" />
-          <span className="text-xs font-bold text-white">GPS {currentPosition ? 'Aktif' : 'Mencari...'}</span>
+          <span className="text-[11px] font-semibold text-white tracking-wide uppercase">GPS {currentPosition ? 'Aktif' : 'Mencari...'}</span>
         </div>
       </div>
 
-      <div className="flex-1 w-full bg-slate-900 relative z-0">
+      {/* PETA LOKASI UTAMA */}
+      <div className="flex-1 w-full bg-slate-200 relative z-0">
         {currentPosition ? (
           <MapContainer center={currentPosition} zoom={17} zoomControl={false} style={{ height: '100%', width: '100%' }}>
-            {/* Menggunakan peta Dark Mode standar (CartoDB DarkMatter) untuk estetika Midnight */}
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-            {/* Garis rute berwarna kuning neon */}
-            {polylinePositions.length > 1 && <Polyline positions={polylinePositions} color="#ccff00" weight={6} lineCap="round" lineJoin="round" />}
-            <Marker position={currentPosition} icon={voltDotIcon} />
+            {/* Peta OpenStreetMap Terang untuk kejelasan jalan */}
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            {/* Garis rute berwarna Merah Terang agar kontras di atas peta putih */}
+            {polylinePositions.length > 1 && <Polyline positions={polylinePositions} color="#ef4444" weight={6} lineCap="round" lineJoin="round" />}
+            <Marker position={currentPosition} icon={iosBlueDotIcon} />
             {(isRecording && !isPaused) && <RecenterAutomatically position={currentPosition} />}
           </MapContainer>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
-            <Activity className="animate-pulse mb-3 text-[#ccff00]" size={32} />
-            <p className="text-sm font-bold">Mencari sinyal GPS...</p>
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-slate-100">
+            <Activity className="animate-pulse mb-3 text-slate-400" size={32} />
+            <p className="text-sm font-semibold text-slate-500">Mencari sinyal GPS...</p>
           </div>
         )}
+        
+        {/* Gradient Blur Overlay untuk transisi lembut ke Panel Bawah */}
+        <div className="absolute bottom-0 w-full h-24 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent pointer-events-none z-[400]"></div>
       </div>
 
-      <div className="bg-slate-950 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-slate-800 relative z-10 pt-8 pb-10 px-6 -mt-6">
-        <div className="grid grid-cols-3 gap-4 text-center mb-8">
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1"><RouteIcon size={12}/> Jarak</p>
-            <p className="text-4xl font-black text-white tracking-tighter">{distance.toFixed(2)}</p>
-            <p className="text-xs font-bold text-slate-500 mt-0.5">km</p>
+      {/* PANEL KONTROL BAWAH (CLEAN FLAT DESIGN) */}
+      <div className="bg-slate-950 rounded-t-[2.5rem] relative z-10 pt-6 pb-10 px-6">
+        
+        <div className="grid grid-cols-3 gap-2 text-center mb-8">
+          <div className="flex flex-col items-center justify-center">
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5"><RouteIcon size={12} className="text-[#ccff00]" /> Jarak</p>
+            <p className="text-4xl font-bold text-white tracking-tight">{distance.toFixed(2)}</p>
+            <p className="text-[10px] font-medium text-slate-500 mt-1">km</p>
           </div>
-          <div className="border-x border-slate-800">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1"><Clock size={12}/> Waktu</p>
-            <p className="text-4xl font-black text-[#ccff00] tracking-tighter">{formatTime(duration)}</p>
+          <div className="border-x border-slate-800/50 flex flex-col items-center justify-center">
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Clock size={12} className="text-blue-400" /> Waktu</p>
+            <p className="text-4xl font-bold text-white tracking-tight">{formatTime(duration)}</p>
+            <p className="text-[10px] font-medium text-slate-500 mt-1">h:m:s</p>
           </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1"><Activity size={12}/> Pace</p>
-            <p className="text-4xl font-black text-white tracking-tighter">{formatCurrentPaceUI()}</p>
-            <p className="text-xs font-bold text-slate-500 mt-0.5">/km</p>
+          <div className="flex flex-col items-center justify-center">
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Activity size={12} className="text-orange-400" /> Pace</p>
+            <p className="text-4xl font-bold text-white tracking-tight">{formatCurrentPaceUI()}</p>
+            <p className="text-[10px] font-medium text-slate-500 mt-1">/km</p>
           </div>
         </div>
 
-        <div className="flex justify-center items-center gap-6">
+        <div className="flex justify-center items-center gap-5">
           {!isRecording ? (
-             <button onClick={startRecording} disabled={!currentPosition} className={`w-full py-4 rounded-full font-black text-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${currentPosition ? 'bg-[#ccff00] text-slate-950 shadow-[0_0_15px_rgba(204,255,0,0.3)]' : 'bg-slate-800 text-slate-600'}`}>
-                <Play size={24} className={currentPosition ? "fill-slate-950" : ""} /> Mulai Lari
+             <button onClick={startRecording} disabled={!currentPosition} className={`w-full max-w-[280px] py-4 rounded-full font-bold text-base flex items-center justify-center gap-2 transition-transform active:scale-95 ${currentPosition ? 'bg-[#ccff00] text-slate-950 shadow-[0_4px_15px_rgba(204,255,0,0.3)]' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
+                <Play size={20} className={currentPosition ? "fill-slate-950" : ""} /> Mulai Lari
              </button>
           ) : (
             <>
               {isPaused ? (
-                <button onClick={resumeRecording} className="w-20 h-20 bg-green-500 text-slate-950 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(34,197,94,0.4)] active:scale-95 transition-transform"><Play size={32} className="fill-slate-950" /></button>
+                <button onClick={resumeRecording} className="w-[4.5rem] h-[4.5rem] bg-emerald-500 text-slate-950 rounded-full flex items-center justify-center shadow-[0_4px_15px_rgba(16,185,129,0.4)] active:scale-95 transition-transform"><Play size={28} className="fill-slate-950 ml-1" /></button>
               ) : (
-                <button onClick={pauseRecording} className="w-20 h-20 bg-orange-500 text-slate-950 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.4)] active:scale-95 transition-transform"><Pause size={32} className="fill-slate-950" /></button>
+                <button onClick={pauseRecording} className="w-[4.5rem] h-[4.5rem] bg-orange-500 text-slate-950 rounded-full flex items-center justify-center shadow-[0_4px_15px_rgba(249,115,22,0.4)] active:scale-95 transition-transform"><Pause size={28} className="fill-slate-950" /></button>
               )}
-              <button onClick={stopRecording} className="w-20 h-20 bg-slate-800 text-white rounded-full flex items-center justify-center border border-slate-700 active:scale-95 transition-transform"><Square size={28} className="fill-white" /></button>
+              <button onClick={stopRecording} className="w-[4.5rem] h-[4.5rem] bg-slate-800 text-white rounded-full flex items-center justify-center border border-slate-700 active:scale-95 transition-transform"><Square size={24} className="fill-white" /></button>
             </>
           )}
         </div>

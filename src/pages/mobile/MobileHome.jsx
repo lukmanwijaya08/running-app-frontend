@@ -22,10 +22,6 @@ const getDynamicTitle = (timestamp) => {
 const DashboardSkeleton = () => (
   <div className="space-y-6 animate-pulse mt-4">
     <div className="bg-slate-900 h-48 rounded-[2rem] border border-slate-800 w-full"></div>
-    <div className="flex gap-4">
-      <div className="bg-slate-900 h-32 min-w-[140px] w-1/2 rounded-3xl border border-slate-800"></div>
-      <div className="bg-slate-900 h-32 min-w-[140px] w-1/2 rounded-3xl border border-slate-800"></div>
-    </div>
     <div className="grid grid-cols-4 gap-3 mt-8">
       {[1, 2, 3, 4].map(i => (
         <div key={i} className="flex flex-col items-center gap-2">
@@ -45,7 +41,8 @@ const MobileHome = () => {
   const [recentActivities, setRecentActivities] = useState([]);
   const [locationName, setLocationName] = useState("Mencari lokasi...");
   
-  // STATE BARU: Mengontrol Tooltip kalender mana yang terbuka saat disentuh
+  // STATE BARU untuk Foto Profil
+  const [profilePhoto, setProfilePhoto] = useState("https://i.pravatar.cc/150?img=11");
   const [activeTooltip, setActiveTooltip] = useState(null);
   
   const [userData, setUserData] = useState({ 
@@ -57,7 +54,6 @@ const MobileHome = () => {
   const [consistencyDays, setConsistencyDays] = useState([]);
   const [personalRecords, setPersonalRecords] = useState({ longestDist: 0, fastestPaceStr: "00:00", fastestPaceSec: 9999 });
 
-  const profilePhoto = "https://i.pravatar.cc/150?img=11";
   const targetSteps = 10000;
   const progressPercentage = todayStats.steps > 0 ? (todayStats.steps / targetSteps) * 100 : 0;
   
@@ -117,6 +113,10 @@ const MobileHome = () => {
         mainTarget: savedProfile.mainTarget || 'speed'
       });
     }
+
+    // Mengambil Foto Profil
+    const savedPhoto = localStorage.getItem('userProfilePhoto');
+    if (savedPhoto) setProfilePhoto(savedPhoto);
 
     const savedRuns = JSON.parse(localStorage.getItem('savedRuns') || '[]');
     const sortedRuns = savedRuns.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -242,60 +242,71 @@ const MobileHome = () => {
       ) : (
         <div className="animate-in fade-in duration-500">
           
-          {/* 1. CAROUSEL MINGGUAN UTAMA (DESAIN IOS BARU) */}
+          {/* 1. CAROUSEL MINGGUAN UTAMA */}
           <div className="flex overflow-x-auto gap-4 pb-8 snap-x snap-mandatory hide-scrollbar -mx-5 px-5">
 
             {/* KARTU 1: TARGET MINGGUAN */}
-            <div className="min-w-[88%] h-[260px] snap-center shrink-0 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-between p-6 border border-slate-700/50">
+            <div className="min-w-[85%] h-[200px] snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between p-4 border border-slate-700/50">
               <img src="https://images.unsplash.com/photo-1571008887538-b36bb32f4571?auto=format&fit=crop&q=80&w=800" alt="Running Runner" className="absolute inset-0 w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-slate-900/20"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/30 to-transparent"></div>
               
-              <div className="relative z-10 flex justify-between items-start">
-                 <div className="px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
-                    <Target size={14} className="text-[#ccff00]" />
-                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Target Mingguan</span>
+              <div className="relative z-10 flex justify-start">
+                 <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow-sm">
+                    <Target size={12} className="text-[#ccff00]" />
+                    <span className="text-[9px] font-bold text-white uppercase tracking-wider">Target Mingguan</span>
                  </div>
               </div>
 
-              <div className="relative z-10 bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-5">
-                <div className="flex justify-between items-end mb-3">
-                  <span className="text-4xl font-black tracking-tighter text-white drop-shadow-md">
-                    {weeklyStats.distance.toFixed(1)} <span className="text-base font-bold text-white/70">/ {userData.weeklyTarget} km</span>
+              <div className="relative z-10 flex-1 flex flex-col justify-center px-2 pointer-events-none">
+                {(userData.weeklyTarget - weeklyStats.distance) > 0 ? (
+                  <>
+                    <p className="text-2xl font-black italic tracking-tighter leading-none text-white drop-shadow-lg">TERUS</p>
+                    <p className="text-2xl font-black italic tracking-tighter leading-none text-[#ccff00] drop-shadow-lg">MELANGKAH.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-black italic tracking-tighter leading-none text-white drop-shadow-lg">TARGET</p>
+                    <p className="text-2xl font-black italic tracking-tighter leading-none text-[#ccff00] drop-shadow-lg">TERCAPAI!</p>
+                  </>
+                )}
+              </div>
+
+              <div className="relative z-20 bg-black/50 backdrop-blur-md border border-white/10 rounded-[1.25rem] p-3 flex flex-col">
+                <div className="flex justify-between items-end mb-2">
+                  <span className="text-xl font-black tracking-tighter text-white leading-none">
+                    {weeklyStats.distance.toFixed(1)} <span className="text-[10px] font-bold text-white/70">/ {userData.weeklyTarget} km</span>
                   </span>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-white/80">
+                    {(userData.weeklyTarget - weeklyStats.distance) > 0 ? `${(userData.weeklyTarget - weeklyStats.distance).toFixed(1)} km Sisa` : 'Luar Biasa! 🎉'}
+                  </p>
                 </div>
-                <div className="h-2.5 w-full bg-black/50 rounded-full overflow-hidden border border-white/5">
-                  <div className="h-full bg-[#ccff00] rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(204,255,0,0.8)]" style={{ width: `${Math.min((weeklyStats.distance / userData.weeklyTarget) * 100, 100)}%` }}></div>
+                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#ccff00] rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(204,255,0,0.8)]" style={{ width: `${Math.min((weeklyStats.distance / userData.weeklyTarget) * 100, 100)}%` }}></div>
                 </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/80 mt-3">
-                  {(userData.weeklyTarget - weeklyStats.distance) > 0 ? `${(userData.weeklyTarget - weeklyStats.distance).toFixed(1)} km tersisa untuk target.` : 'Target mingguan tercapai! 🎉'}
-                </p>
               </div>
             </div>
             
             {/* KARTU 2: KONSISTENSI 7 HARI */}
-            <div className="min-w-[88%] h-[260px] snap-center shrink-0 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-between p-6 border border-slate-700/50">
+            <div className="min-w-[85%] h-[200px] snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between p-4 border border-slate-700/50">
               <img src="https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&q=80&w=800" alt="Running Shoes" className="absolute inset-0 w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/70 to-slate-900/30"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/30 to-transparent"></div>
               
               <div className="relative z-10 flex justify-between items-start">
-                 <div className="px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
-                    <CalendarDays size={14} className="text-[#ccff00]" />
-                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Konsistensi</span>
+                 <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow-sm">
+                    <CalendarDays size={12} className="text-[#ccff00]" />
+                    <span className="text-[9px] font-bold text-white uppercase tracking-wider">Konsistensi</span>
+                 </div>
+                 <div className="bg-black/40 backdrop-blur-md rounded-full px-2 py-1 flex items-center gap-1 border border-white/10">
+                    <span className="text-[10px] font-black text-[#ccff00]">{Math.round((weeklyStats.count / 7) * 100)}%</span>
                  </div>
               </div>
 
-              <div className="relative z-10 flex items-center gap-4 bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-4">
-                <div className="relative w-16 h-16 flex-shrink-0">
-                  <svg className="w-full h-full transform -rotate-90 drop-shadow-md">
-                    <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.1)" strokeWidth="6" fill="transparent" />
-                    <circle cx="32" cy="32" r="28" stroke="#ccff00" strokeWidth="6" fill="transparent" strokeDasharray={175} strokeDashoffset={175 - (Math.min(weeklyStats.count / 7, 1)) * 175} strokeLinecap="round" className="drop-shadow-[0_0_8px_rgba(204,255,0,0.6)]" />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-sm font-black text-white">{Math.round((weeklyStats.count / 7) * 100)}%</span>
-                  </div>
-                </div>
+              <div className="flex-1"></div>
 
-                <div className="flex justify-between items-center w-full">
+              <div className="relative z-20 flex flex-col gap-2 bg-black/50 backdrop-blur-md border border-white/10 rounded-[1.25rem] p-3">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-white/80 text-center mb-1">Disiplin Minggu Ini</p>
+                
+                <div className="flex justify-between items-center w-full px-1">
                   {consistencyDays.slice(2, 7).map((d, i) => (
                     <div 
                       key={i} 
@@ -304,16 +315,20 @@ const MobileHome = () => {
                         if(d.active) setActiveTooltip(activeTooltip === i ? null : i);
                       }}
                     >
-                      <span className={`text-[9px] font-bold ${d.isToday ? 'text-[#ccff00]' : 'text-white/70'}`}>{d.day}</span>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all ${d.active ? 'bg-[#ccff00] text-slate-950 shadow-[0_0_10px_rgba(204,255,0,0.6)]' : (d.isToday ? 'border border-[#ccff00] text-[#ccff00] bg-black/50' : 'text-white/50 bg-black/30 border border-white/10')}`}>
+                      <span className={`text-[8px] font-bold ${d.isToday ? 'text-[#ccff00]' : 'text-white/70'}`}>{d.day}</span>
+                      
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black transition-all duration-300 ${
+                        d.active 
+                          ? 'bg-gradient-to-b from-[#d9ff33] to-[#aacc00] text-slate-950 shadow-[0_4px_12px_rgba(204,255,0,0.5)] transform -translate-y-1 border border-white/40' 
+                          : (d.isToday ? 'border border-[#ccff00] text-[#ccff00] bg-black/50' : 'text-white/50 bg-black/30 border border-white/10')
+                      }`}>
                         {d.date}
                       </div>
                       
-                      {/* Tooltip Interaktif untuk Layar Sentuh */}
                       {d.active && activeTooltip === i && (
                         <div className="absolute bottom-full mb-2 flex flex-col items-center bg-slate-800 text-white p-2 rounded-xl shadow-xl whitespace-nowrap z-50 border border-slate-700 animate-in fade-in zoom-in-95 duration-200">
-                          <span className="text-xs font-black text-[#ccff00] mb-0.5">{d.distance.toFixed(1)} km</span>
-                          <span className="text-[10px] text-slate-300 font-bold flex items-center gap-1"><Clock size={10}/> {formatTimeStr(d.duration)}</span>
+                          <span className="text-[10px] font-black text-[#ccff00] mb-0.5">{d.distance.toFixed(1)} km</span>
+                          <span className="text-[8px] text-slate-300 font-bold flex items-center gap-1"><Clock size={8}/> {formatTimeStr(d.duration)}</span>
                           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
                         </div>
                       )}
@@ -324,58 +339,62 @@ const MobileHome = () => {
             </div>
 
             {/* KARTU 3: AKTIVITAS MINGGUAN */}
-            <div className="min-w-[88%] h-[260px] snap-center shrink-0 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-between p-6 border border-slate-700/50">
+            <div className="min-w-[85%] h-[200px] snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between p-4 border border-slate-700/50">
               <img src="https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&q=80&w=800" alt="Running Track" className="absolute inset-0 w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-slate-900/20"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent"></div>
               
-              <div className="relative z-10 flex justify-between items-start">
-                 <div className="px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
-                    <Activity size={14} className="text-[#ccff00]" />
-                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Aktivitas Mingguan</span>
+              <div className="relative z-10 flex justify-start">
+                 <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow-sm">
+                    <Activity size={12} className="text-[#ccff00]" />
+                    <span className="text-[9px] font-bold text-white uppercase tracking-wider">Aktivitas Mingguan</span>
                  </div>
               </div>
 
-              <div className="relative z-10 bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-5">
-                <div className="flex justify-between items-end mb-4 border-b border-white/10 pb-4">
+              <div className="flex-1"></div>
+
+              <div className="relative z-20 bg-black/50 backdrop-blur-md border border-white/10 rounded-[1.25rem] p-3 flex flex-col">
+                <div className="flex justify-between items-end mb-2 border-b border-white/10 pb-2">
                   <div>
-                    <p className="text-4xl font-black text-white tracking-tighter drop-shadow-md">{weeklyStats.distance.toFixed(1)}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/70 mt-1">Kilometer</p>
+                    <p className="text-2xl font-black text-white tracking-tighter drop-shadow-md leading-none">{weeklyStats.distance.toFixed(1)}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-white/70 mt-1">Kilometer</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-black text-white drop-shadow-md">{formatTimeStr(weeklyStats.duration)}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/70 mt-1">Waktu Lari</p>
+                    <p className="text-lg font-black text-white drop-shadow-md leading-none">{formatTimeStr(weeklyStats.duration)}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-white/70 mt-1">Waktu Lari</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/90">
-                  <Route size={14} className="text-[#ccff00]" />
-                  <span>{weeklyStats.count} Total Aktivitas Minggu Ini</span>
+                <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-white/90">
+                  <Route size={10} className="text-[#ccff00]" />
+                  <span>{weeklyStats.count} Total Aktivitas Selesai</span>
                 </div>
               </div>
             </div>
 
-            {/* KARTU 4: RUNNING SCORE (DIPERBAIKI) */}
-            <div className="min-w-[88%] h-[260px] snap-center shrink-0 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col justify-between p-6 border border-slate-700/50">
-              <img src="https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=800" alt="Running Performance" className="absolute inset-0 w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/70 to-slate-900/30"></div>
+            {/* KARTU 4: RUNNING SCORE */}
+            <div className="min-w-[85%] h-[200px] snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between p-4 border border-slate-700/50">
+              <img src="https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&q=80&w=800" alt="Workout" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent"></div>
               
-              <div className="relative z-10 flex justify-between items-start">
-                 <div className="px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
-                    <Medal size={14} className="text-[#ccff00]" />
-                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Running Score</span>
+              <div className="relative z-10 flex justify-start">
+                 <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow-sm">
+                    <Medal size={12} className="text-[#ccff00]" />
+                    <span className="text-[9px] font-bold text-white uppercase tracking-wider">Running Score</span>
                  </div>
               </div>
 
-              <div className="relative z-10 flex items-center justify-between bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-5">
+              <div className="flex-1"></div>
+
+              <div className="relative z-20 flex items-center justify-between bg-black/50 backdrop-blur-md border border-white/10 rounded-[1.25rem] p-3">
                 <div>
-                  <h2 className="text-xl font-black text-white mb-1 drop-shadow-md">Performa Anda</h2>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/70">Kalkulasi Minggu Ini</p>
+                  <h2 className="text-lg font-black text-white mb-1 drop-shadow-md leading-none">Skor Performa</h2>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-white/70">Kalkulasi Minggu Ini</p>
                 </div>
-                <div className="relative w-20 h-20 flex items-center justify-center bg-black/30 rounded-full border border-white/10">
+                <div className="relative w-12 h-12 flex items-center justify-center bg-black/30 rounded-full border border-white/10">
                   <svg className="absolute w-full h-full transform -rotate-90">
-                    <circle cx="40" cy="40" r="34" stroke="rgba(255,255,255,0.1)" strokeWidth="6" fill="transparent" />
-                    <circle cx="40" cy="40" r="34" stroke="#ccff00" strokeWidth="6" fill="transparent" strokeDasharray={213} strokeDashoffset={213 - (runningScore / 100) * 213} strokeLinecap="round" className="drop-shadow-[0_0_8px_rgba(204,255,0,0.6)]" />
+                    <circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="transparent" />
+                    <circle cx="24" cy="24" r="20" stroke="#ccff00" strokeWidth="4" fill="transparent" strokeDasharray={125.6} strokeDashoffset={125.6 - (runningScore / 100) * 125.6} strokeLinecap="round" className="drop-shadow-[0_0_5px_rgba(204,255,0,0.6)]" />
                   </svg>
-                  <span className="text-2xl font-black text-white">{runningScore}</span>
+                  <span className="text-sm font-black text-white">{runningScore}</span>
                 </div>
               </div>
             </div>

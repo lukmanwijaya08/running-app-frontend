@@ -65,26 +65,22 @@ const MobileActivityDetail = () => {
   const [chartData, setChartData] = useState([]);
   const [maxElevation, setMaxElevation] = useState(0);
   const [fastestPace, setFastestPace] = useState(9999);
-  
-  // STATE BARU: Menyimpan nama kota/lokasi (Default: SEMARANG)
   const [locationName, setLocationName] = useState("SEMARANG");
-
   const [analytics, setAnalytics] = useState({ cadence: 0, calories: 0, score: 0, analysisText: '', badges: [] });
+
+  const [userProfile, setUserProfile] = useState({ name: 'Pelari', photo: 'https://i.pravatar.cc/150?img=11' });
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [activeSticker, setActiveSticker] = useState(0); 
   const stickerRef = useRef(null);
 
-  // FUNGSI BARU: Reverse Geocoding untuk mendapatkan nama Kota
   const fetchLocationName = async (lat, lon) => {
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
       const data = await response.json();
       if (data && data.address) {
-        // Coba ambil kota, kabupaten, atau state
         const city = data.address.city || data.address.town || data.address.county || data.address.state || "INDONESIA";
-        // Filter nama lokasi (contoh: "Kota Semarang" menjadi "SEMARANG")
         const cleanName = city.replace(/Kota |Kabupaten /g, '').toUpperCase();
         setLocationName(cleanName);
       }
@@ -101,11 +97,17 @@ const MobileActivityDetail = () => {
       setActivity(runData);
       calculateAnalytics(runData.positions, runData, savedRuns);
 
-      // Trigger fetch lokasi jika ada koordinat rute
       if (runData.positions && runData.positions.length > 0) {
         fetchLocationName(runData.positions[0].lat, runData.positions[0].lon);
       }
     }
+
+    const savedProfileData = JSON.parse(localStorage.getItem('userProfile'));
+    const savedPhoto = localStorage.getItem('userProfilePhoto');
+    setUserProfile({
+      name: savedProfileData?.name || 'Pelari',
+      photo: savedPhoto || 'https://i.pravatar.cc/150?img=11'
+    });
   }, [id]);
 
   const calculateAnalytics = (positions, currentRun, allRuns) => {
@@ -185,18 +187,12 @@ const MobileActivityDetail = () => {
     const speedKmh = totalPaceSec > 0 ? (3600 / totalPaceSec) : 0;
     const calcScore = Math.min(100, Math.round(40 + (currentRun.distance * 1.5) + (speedKmh * 2.5)));
 
-    let text = "Lari yang sangat konsisten. Terus pertahankan ritme dan rutinitas Anda!";
-    if (currentRun.distance > 10) text = "Lari jarak jauh yang luar biasa! Daya tahan dan stamina Anda semakin terbentuk.";
-    else if (speedKmh > 10) text = "Pace yang sangat cepat! Sesi lari ini sangat baik untuk melatih kecepatan dan VO2 Max Anda.";
+    let text = "Lari yang sangat konsisten. Terus pertahankan ritme dan rutinitas Anda.";
+    if (currentRun.distance > 10) text = "Lari jarak jauh yang luar biasa. Daya tahan dan stamina Anda semakin terbentuk.";
+    else if (speedKmh > 10) text = "Pace yang sangat cepat. Sesi lari ini sangat baik untuk melatih kecepatan dan VO2 Max Anda.";
     else if (highestElev > 50) text = "Rute menanjak yang menantang berhasil Anda taklukkan. Kekuatan otot kaki Anda meningkat tajam.";
 
-    setAnalytics({
-      cadence: calculatedCadence,
-      calories: calculatedCalories,
-      score: calcScore || 0,
-      analysisText: text,
-      badges: badges
-    });
+    setAnalytics({ cadence: calculatedCadence, calories: calculatedCalories, score: calcScore || 0, analysisText: text, badges: badges });
   };
 
   const renderSvgRoute = (positions, styleType = 'normal') => {
@@ -224,13 +220,8 @@ const MobileActivityDetail = () => {
     const padding = strokeW * 2; 
 
     let width, height;
-    if (adjLonDiff > latDiff) {
-       width = 1000;
-       height = 1000 * (latDiff / adjLonDiff);
-    } else {
-       height = 1000;
-       width = 1000 * (adjLonDiff / latDiff);
-    }
+    if (adjLonDiff > latDiff) { width = 1000; height = 1000 * (latDiff / adjLonDiff); } 
+    else { height = 1000; width = 1000 * (adjLonDiff / latDiff); }
 
     const points = positions.map(p => {
       const x = ((p.lon - minLon) / lonDiff) * width;
@@ -240,15 +231,7 @@ const MobileActivityDetail = () => {
 
     return (
       <svg viewBox={`0 0 ${width + padding * 2} ${height + padding * 2}`} className={isReceipt ? "w-full h-full" : "w-full max-h-[800px] drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)]"}>
-        <polyline 
-          points={points} 
-          fill="none" 
-          stroke={strokeColor} 
-          strokeWidth={strokeW} 
-          strokeLinecap={isReceipt ? "square" : "round"} 
-          strokeLinejoin="round" 
-          strokeDasharray={isReceipt ? "15 25" : "none"}
-        />
+        <polyline points={points} fill="none" stroke={strokeColor} strokeWidth={strokeW} strokeLinecap={isReceipt ? "square" : "round"} strokeLinejoin="round" strokeDasharray={isReceipt ? "15 25" : "none"} />
       </svg>
     );
   };
@@ -257,11 +240,15 @@ const MobileActivityDetail = () => {
     if (stickerRef.current) {
       setIsDownloading(true);
       try {
+        // Ditambahkan pixelRatio: 2 agar kualitas gambar PNG lebih tajam dan tidak pecah
         const dataUrl = await toPng(stickerRef.current, { 
-          cacheBust: true, backgroundColor: 'transparent', pixelRatio: 1, fontEmbedCSS: '', style: { transform: 'scale(1)', transformOrigin: 'top left' } 
+          cacheBust: true, 
+          backgroundColor: 'transparent', 
+          pixelRatio: 2, 
+          style: { transform: 'scale(1)', transformOrigin: 'top left' } 
         });
         const link = document.createElement('a');
-        const styleNames = ['Route', 'Splits', 'Elevation', 'Code', 'Thin', 'Minimal', 'Receipt', 'Strava'];
+        const styleNames = ['Route', 'Splits', 'Elevation', 'Code', 'Thin', 'Minimal', 'Receipt', 'Strava', 'Personal'];
         link.download = `PlayonApp-${styleNames[activeSticker]}-${activity.id}.png`;
         link.href = dataUrl;
         link.click();
@@ -279,7 +266,9 @@ const MobileActivityDetail = () => {
 
   const runDate = new Date(activity.date);
   const displayDate = runDate.toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB';
-  const dynamicTitle = activity.title || `${getDynamicTitle(activity.date)} (${runDate.getDate()}/${runDate.getMonth() + 1}/${runDate.getFullYear()})`;
+  // Format tanggal angka (DD/MM/YYYY)
+  const shortDate = `${String(runDate.getDate()).padStart(2, '0')}/${String(runDate.getMonth() + 1).padStart(2, '0')}/${runDate.getFullYear()}`;
+  const dynamicTitle = activity.title || `${getDynamicTitle(activity.date)}`;
   const mapPositions = activity.positions ? activity.positions.map(p => [p.lat, p.lon]) : [];
   const safeMaxElevation = maxElevation > -9000 ? maxElevation : 0;
 
@@ -289,112 +278,126 @@ const MobileActivityDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 pb-10 text-white font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-slate-950 pb-10 text-white font-sans selection:bg-[#ccff00] selection:text-slate-900" style={{ fontFamily: "'Inter', sans-serif" }}>
       
-      {/* HEADER */}
-      <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-950/90 backdrop-blur-md z-50 px-5 h-16 flex items-center justify-between border-b border-slate-900">
-        <button onClick={handleBackNavigation} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full text-slate-300 active:bg-slate-800 transition-colors"><ChevronLeft size={24} /></button>
-        <h1 className="text-sm font-bold text-white">Detail Aktivitas</h1>
-        <button onClick={() => setIsShareModalOpen(true)} className="w-10 h-10 flex items-center justify-center -mr-2 rounded-full text-[#ccff00] active:bg-slate-800 transition-colors"><Share2 size={20} /></button>
+      {/* HEADER NAV */}
+      <div className="fixed top-0 w-full max-w-md mx-auto bg-slate-950/80 backdrop-blur-xl z-50 px-4 h-14 flex items-center justify-between">
+        <button onClick={handleBackNavigation} className="w-10 h-10 flex items-center justify-center -ml-2 text-[#ccff00] transition-colors"><ChevronLeft size={28} strokeWidth={2.5} /></button>
+        <h1 className="text-sm font-semibold text-white tracking-wide">Ringkasan</h1>
+        <button onClick={() => setIsShareModalOpen(true)} className="w-10 h-10 flex items-center justify-center -mr-2 text-[#ccff00] transition-colors"><Share2 size={22} strokeWidth={2} /></button>
       </div>
 
-      <div className="max-w-md mx-auto pt-16">
+      <div className="max-w-md mx-auto pt-14">
         
-        {/* PETA 2D */}
-        <div className="w-full h-72 bg-slate-100 relative overflow-hidden flex flex-col items-center justify-end pb-6 rounded-b-[2.5rem] shadow-lg z-0 border-b border-slate-800">
+        {/* PETA LOKASI */}
+        <div className="w-full h-[280px] bg-slate-200 relative overflow-hidden rounded-b-[2rem] z-0">
           <MapContainer zoomControl={false} style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0 }}>
              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-             {mapPositions.length > 1 && <Polyline positions={mapPositions} color="#ef4444" weight={6} lineCap="round" lineJoin="round" />}
+             {mapPositions.length > 1 && <Polyline positions={mapPositions} color="#3b82f6" weight={7} lineCap="round" lineJoin="round" opacity={1} />}
              <FitBounds positions={mapPositions} />
           </MapContainer>
+          <div className="absolute bottom-0 w-full h-20 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent pointer-events-none z-[400]"></div>
         </div>
 
-        <div className="px-5 py-6">
-          <h2 className="text-2xl font-black text-white mb-1 tracking-tight">{dynamicTitle}</h2>
-          <p className="text-xs font-bold text-slate-400 mb-2">{displayDate}</p>
+        {/* AREA JUDUL */}
+        <div className="px-5 pt-6 pb-2">
+          <div className="flex items-center gap-1.5 mb-1.5">
+             <MapPin size={12} className="text-slate-400" />
+             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{locationName}</p>
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-1 tracking-tight">{dynamicTitle}</h2>
+          <p className="text-xs font-medium text-slate-500 mb-4">{displayDate}</p>
           
           {analytics.badges.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4 mt-3">
+            <div className="flex flex-wrap gap-2 mb-4">
               {analytics.badges.map(badge => (
-                <span key={badge} className="inline-flex items-center gap-1.5 bg-orange-900/30 text-orange-400 border border-orange-800 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest">
-                  <Trophy size={12} /> {badge}
+                <span key={badge} className="inline-flex items-center gap-1 bg-[#ccff00]/10 text-[#ccff00] px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider">
+                  <Trophy size={10} /> {badge}
                 </span>
               ))}
             </div>
           )}
           
           {activity.description && (
-            <p className="text-xs text-slate-300 bg-slate-900 p-3 rounded-2xl shadow-sm border border-slate-800 mb-6 font-bold leading-relaxed">{activity.description}</p>
+            <p className="text-sm text-slate-300 font-medium leading-relaxed mb-6">{activity.description}</p>
           )}
 
-          {/* METRIK 3x2 (Grid) */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="p-4 bg-slate-900 rounded-[1.25rem] shadow-lg border border-slate-800 flex flex-col items-center text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1"><Route size={12} className="text-[#ccff00]"/> Jarak</p>
-              <p className="text-xl font-black text-white tracking-tight">{activity.distance.toFixed(2)} <span className="text-[10px] font-bold text-slate-500">km</span></p>
+          {/* METRIK UTAMA 2 KOLOM */}
+          <div className="grid grid-cols-2 gap-3 mb-3 mt-4">
+            <div className="bg-slate-900/60 rounded-[1.5rem] p-5 flex flex-col justify-center">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1 flex items-center gap-1.5"><Route size={14} className="text-[#ccff00]"/> Jarak</span>
+              <p className="text-3xl font-bold text-white tracking-tight">{activity.distance.toFixed(2)} <span className="text-sm font-medium text-slate-500">km</span></p>
             </div>
-            <div className="p-4 bg-slate-900 rounded-[1.25rem] shadow-lg border border-slate-800 flex flex-col items-center text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1"><Clock size={12} className="text-blue-400"/> Waktu</p>
-              <p className="text-xl font-black text-white tracking-tight">{formatTimeStr(activity.movingTime)}</p>
+            <div className="bg-slate-900/60 rounded-[1.5rem] p-5 flex flex-col justify-center">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1 flex items-center gap-1.5"><Clock size={14} className="text-blue-400"/> Waktu</span>
+              <p className="text-3xl font-bold text-white tracking-tight">{formatTimeStr(activity.movingTime)}</p>
             </div>
-            <div className="p-4 bg-slate-900 rounded-[1.25rem] shadow-lg border border-slate-800 flex flex-col items-center text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1"><Zap size={12} className="text-[#ccff00]"/> Pace</p>
-              <p className="text-xl font-black text-white tracking-tight">{activity.avgPace}</p>
+          </div>
+
+          {/* METRIK SEKUNDER 4 KOTAK */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-rows-2 gap-3">
+               <div className="bg-slate-900/60 rounded-[1.25rem] p-4 flex flex-col justify-center">
+                 <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-500 mb-0.5">Pace</span>
+                 <p className="text-xl font-bold text-white tracking-tight">{activity.avgPace}</p>
+               </div>
+               <div className="bg-slate-900/60 rounded-[1.25rem] p-4 flex flex-col justify-center">
+                 <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-500 mb-0.5">Cadence</span>
+                 <p className="text-xl font-bold text-white tracking-tight">{analytics.cadence} <span className="text-xs font-medium text-slate-500">spm</span></p>
+               </div>
             </div>
-            <div className="p-4 bg-slate-900 rounded-[1.25rem] shadow-lg border border-slate-800 flex flex-col items-center text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1"><Flame size={12} className="text-orange-500"/> Kalori</p>
-              <p className="text-xl font-black text-white tracking-tight">{analytics.calories} <span className="text-[10px] font-bold text-slate-500">cal</span></p>
-            </div>
-            <div className="p-4 bg-slate-900 rounded-[1.25rem] shadow-lg border border-slate-800 flex flex-col items-center text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1"><Footprints size={12} className="text-emerald-400"/> Cadence</p>
-              <p className="text-xl font-black text-white tracking-tight">{analytics.cadence} <span className="text-[10px] font-bold text-slate-500">spm</span></p>
-            </div>
-            <div className="p-4 bg-slate-900 rounded-[1.25rem] shadow-lg border border-slate-800 flex flex-col items-center text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1"><TrendingUp size={12} className="text-rose-400"/> Elevasi</p>
-              <p className="text-xl font-black text-white tracking-tight">{safeMaxElevation} <span className="text-[10px] font-bold text-slate-500">m</span></p>
+            <div className="grid grid-rows-2 gap-3">
+               <div className="bg-slate-900/60 rounded-[1.25rem] p-4 flex flex-col justify-center">
+                 <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-500 mb-0.5">Kalori</span>
+                 <p className="text-xl font-bold text-white tracking-tight">{analytics.calories} <span className="text-xs font-medium text-slate-500">kcal</span></p>
+               </div>
+               <div className="bg-slate-900/60 rounded-[1.25rem] p-4 flex flex-col justify-center">
+                 <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-500 mb-0.5">Elevasi</span>
+                 <p className="text-xl font-bold text-white tracking-tight">{safeMaxElevation} <span className="text-xs font-medium text-slate-500">m</span></p>
+               </div>
             </div>
           </div>
         </div>
 
-        <div className="px-5 space-y-4 pb-8">
+        <div className="px-5 space-y-3 pb-8">
           
-          <div className="bg-slate-900 rounded-3xl p-5 shadow-lg border border-slate-800 flex items-center gap-5">
-            <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0">
+          {/* ANALISIS PERFORMA */}
+          <div className="bg-slate-900/60 rounded-[2rem] p-5 flex items-center gap-5">
+            <div className="relative w-14 h-14 flex items-center justify-center flex-shrink-0">
               <svg className="absolute w-full h-full transform -rotate-90">
-                <circle cx="32" cy="32" r="28" stroke="#1e293b" strokeWidth="5" fill="transparent" />
-                <circle cx="32" cy="32" r="28" stroke="#ccff00" strokeWidth="5" fill="transparent" strokeDasharray={175} strokeDashoffset={175 - (analytics.score / 100) * 175} strokeLinecap="round" />
+                <circle cx="28" cy="28" r="24" stroke="#1e293b" strokeWidth="4" fill="transparent" />
+                <circle cx="28" cy="28" r="24" stroke="#ccff00" strokeWidth="4" fill="transparent" strokeDasharray={150} strokeDashoffset={150 - (analytics.score / 100) * 150} strokeLinecap="round" />
               </svg>
-              <span className="text-lg font-black text-white">{analytics.score}</span>
+              <span className="text-base font-bold text-white">{analytics.score}</span>
             </div>
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1"><Target size={12}/> Analisis Performa</h3>
-              <p className="text-xs font-bold text-slate-300 leading-relaxed">{analytics.analysisText}</p>
+              <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1">Analisis Performa</h3>
+              <p className="text-xs font-medium text-slate-300 leading-relaxed pr-2">{analytics.analysisText}</p>
             </div>
           </div>
 
-          <div className="bg-slate-900 rounded-3xl p-6 shadow-lg border border-slate-800">
-            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <Activity size={16} className="text-[#ccff00]"/> Split Kilometer
-            </h3>
-            <div className="flex text-left text-slate-500 text-[10px] font-bold uppercase tracking-widest border-b border-slate-800 pb-2 mb-2">
-              <div className="w-8">KM</div>
-              <div className="w-12">Pace</div>
+          {/* SPLIT KILOMETER */}
+          <div className="bg-slate-900/60 rounded-[2rem] p-6">
+            <h3 className="text-sm font-semibold text-white mb-5">Split Kilometer</h3>
+            <div className="flex text-left text-slate-500 text-[10px] font-semibold uppercase tracking-widest border-b border-slate-800/50 pb-2 mb-2">
+              <div className="w-10">KM</div>
+              <div className="w-16">Pace</div>
               <div className="flex-1"></div>
               <div className="w-12 text-right">Elv</div>
             </div>
-            <div className="space-y-1 max-h-72 overflow-y-auto pr-2 hide-scrollbar">
+            <div className="space-y-1 max-h-[300px] overflow-y-auto pr-2 hide-scrollbar">
               {splitData.map((split, idx) => {
                 const isFastest = split.paceSec === fastestPace && splitData.length > 1;
                 return (
-                  <div key={idx} className="flex items-center py-2 border-b border-slate-800/50 last:border-0">
-                    <div className="w-8 font-bold text-sm text-slate-300">{split.km}</div>
-                    <div className={`w-12 font-black text-sm ${isFastest ? 'text-[#ccff00]' : 'text-slate-400'}`}>{split.paceStr}</div>
-                    <div className="flex-1 px-2">
+                  <div key={idx} className="flex items-center py-2.5 border-b border-slate-800/30 last:border-0">
+                    <div className="w-10 font-semibold text-sm text-slate-300">{split.km}</div>
+                    <div className={`w-16 font-bold text-sm ${isFastest ? 'text-[#ccff00]' : 'text-slate-200'}`}>{split.paceStr}</div>
+                    <div className="flex-1 px-3">
                       <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                         <div className={`h-full rounded-full ${isFastest ? 'bg-[#ccff00]' : 'bg-slate-600'}`} style={{ width: `${(fastestPace / split.paceSec) * 100}%` }}></div>
                       </div>
                     </div>
-                    <div className="w-12 font-bold text-xs text-slate-500 text-right">
+                    <div className="w-12 font-medium text-xs text-slate-400 text-right">
                       {split.elevationChange > 0 ? `+${split.elevationChange}` : split.elevationChange}m
                     </div>
                   </div>
@@ -403,15 +406,16 @@ const MobileActivityDetail = () => {
             </div>
           </div>
 
-          <div className="bg-slate-900 rounded-3xl p-6 shadow-lg border border-slate-800">
-            <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2"><Zap size={16} className="text-[#ccff00]"/> Grafik Pace (per KM)</h3>
-            <div className="h-32 w-full min-w-[100px] min-h-[50px]">
+          {/* GRAFIK PACE (Penambahan height dan width fix agar Recharts tidak warning) */}
+          <div className="bg-slate-900/60 rounded-[2rem] p-6">
+            <h3 className="text-sm font-semibold text-white mb-6">Grafik Pace</h3>
+            <div style={{ width: '100%', height: 144 }}>
               {splitData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+                <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={splitData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorPaceMain" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ccff00" stopOpacity={0.4}/>
+                        <stop offset="5%" stopColor="#ccff00" stopOpacity={0.2}/>
                         <stop offset="95%" stopColor="#ccff00" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
@@ -421,38 +425,39 @@ const MobileActivityDetail = () => {
                        const m = Math.floor(sec/60);
                        const s = Math.floor(sec%60);
                        return `${m}:${s<10?'0'+s:s}`;
-                    }} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold', fontFamily: 'Poppins' }} />
+                    }} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500, fontFamily: 'Inter' }} />
                     <Area type="monotone" dataKey="paceSec" stroke="#ccff00" strokeWidth={2} fillOpacity={1} fill="url(#colorPaceMain)" />
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#0f172a', color: '#fff', fontWeight: 'bold', fontSize: '12px' }} formatter={(value) => [`${Math.floor(value/60)}:${Math.floor(value%60).toString().padStart(2,'0')} /km`, 'Pace']} labelFormatter={(label) => `Split: KM ${label}`} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#1e293b', color: '#fff', fontWeight: 'bold', fontSize: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} formatter={(value) => [`${Math.floor(value/60)}:${Math.floor(value%60).toString().padStart(2,'0')} /km`, 'Pace']} labelFormatter={(label) => `Split: KM ${label}`} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-500">Data kurang untuk grafik.</div>
+                <div className="w-full h-full flex items-center justify-center text-xs font-medium text-slate-500">Data kurang untuk grafik.</div>
               )}
             </div>
           </div>
 
-          <div className="bg-slate-900 rounded-3xl p-6 shadow-lg border border-slate-800">
-            <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2"><TrendingUp size={16} className="text-orange-500"/> Grafik Ketinggian</h3>
-            <div className="h-32 w-full min-w-[100px] min-h-[50px]">
+          {/* GRAFIK KETINGGIAN */}
+          <div className="bg-slate-900/60 rounded-[2rem] p-6">
+            <h3 className="text-sm font-semibold text-white mb-6">Grafik Elevasi</h3>
+            <div style={{ width: '100%', height: 144 }}>
               {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+                <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorElevationMain" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.4}/>
+                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.2}/>
                         <stop offset="95%" stopColor="#ea580c" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
                     <XAxis dataKey="km" hide />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold', fontFamily: 'Poppins' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500, fontFamily: 'Inter' }} />
                     <Area type="monotone" dataKey="elevation" stroke="#f97316" strokeWidth={2} fillOpacity={1} fill="url(#colorElevationMain)" />
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#0f172a', color: '#fff', fontWeight: 'bold', fontSize: '12px' }} formatter={(value) => [`${value}m`, 'Elevasi']} labelFormatter={(label) => `Jarak: ${Number(label).toFixed(2)} km`} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#1e293b', color: '#fff', fontWeight: 'bold', fontSize: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} formatter={(value) => [`${value}m`, 'Elevasi']} labelFormatter={(label) => `Jarak: ${Number(label).toFixed(2)} km`} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-500">Data kurang untuk grafik.</div>
+                <div className="w-full h-full flex items-center justify-center text-xs font-medium text-slate-500">Data kurang untuk grafik.</div>
               )}
             </div>
           </div>
@@ -472,14 +477,14 @@ const MobileActivityDetail = () => {
           </div>
 
           <div className="flex items-center justify-between w-full max-w-[420px] mb-8">
-            <button onClick={() => setActiveSticker((prev) => (prev > 0 ? prev - 1 : 7))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90 shrink-0">
+            <button onClick={() => setActiveSticker((prev) => (prev > 0 ? prev - 1 : 8))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90 shrink-0">
               <ChevronLeft size={32} />
             </button>
 
             {/* Area Sticker Preview */}
-            <div className="relative w-64 h-[400px] flex justify-center bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl overflow-y-auto overflow-x-hidden hide-scrollbar">
+            <div className="relative w-64 h-[400px] flex justify-center bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl overflow-y-auto overflow-x-hidden hide-scrollbar">
               <div className="origin-top" style={{ transform: 'scale(0.237)', width: '1080px' }}>
-                <div ref={stickerRef} className={`w-[1080px] h-fit flex flex-col items-center justify-center ${activeSticker === 6 ? 'p-0' : 'p-12'}`} style={{ background: 'transparent' }}>
+                <div ref={stickerRef} className={`w-[1080px] h-fit flex flex-col items-center justify-center ${activeSticker === 6 || activeSticker === 8 ? 'p-0' : 'p-12'}`} style={{ background: 'transparent' }}>
                   
                   {/* STYLE 0 */}
                   {activeSticker === 0 && (
@@ -663,7 +668,6 @@ const MobileActivityDetail = () => {
                              <div className="text-2xl text-slate-500 font-bold tracking-widest">OUTDOOR RUN</div>
                           </div>
                           <div className="text-right">
-                             {/* REVISI: Menggunakan state locationName */}
                              <div className="text-5xl font-black tracking-widest mb-3">{locationName}</div>
                              <div className="text-2xl text-slate-500 font-bold tracking-widest">
                                {new Date(activity.date).toLocaleDateString('en-US', {month: 'short', day: '2-digit', year: 'numeric'})}
@@ -742,11 +746,10 @@ const MobileActivityDetail = () => {
                     </div>
                   )}
 
-                  {/* REVISI: STICKER 7 - GAYA STRAVA */}
+                  {/* STYLE 7 - GAYA STRAVA */}
                   {activeSticker === 7 && (
                     <div className="w-[1080px] h-fit flex flex-col justify-end text-white pt-6 px-16 pb-12 relative">
                       
-                      {/* Logo dan Nama Aplikasi di Pojok Kiri Atas Area Teks */}
                       <div className="flex items-center gap-3 drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] mb-20 mt-8">
                          <div className="w-14 h-14 bg-[#ccff00] rounded-xl flex items-center justify-center text-slate-900 shadow-[0_0_10px_rgba(204,255,0,0.4)]">
                            <Activity size={50} />
@@ -785,17 +788,66 @@ const MobileActivityDetail = () => {
                     </div>
                   )}
 
+                  {/* STYLE 8 - PERSONAL CLEAN (Transparan, Rapi, Soft, Teks Sejajar) */}
+                  {activeSticker === 8 && (
+                    <div 
+                      className="w-[1080px] h-fit flex flex-col p-16 text-white bg-transparent"
+                      style={{ textShadow: '0px 2px 10px rgba(0,0,0,0.5)' }}
+                    >
+                      
+                      {/* Baris 1: Profil & Nama User */}
+                      <div className="flex items-center gap-6 mb-8">
+                        <img 
+                          src={userProfile.photo} 
+                          alt="Profile" 
+                          crossOrigin="anonymous"
+                          className="w-24 h-24 rounded-full object-cover border-[3px] border-white shadow-sm" 
+                        />
+                        <div className="text-4xl font-bold tracking-wide">{userProfile.name}</div>
+                      </div>
+
+                      {/* Baris 2: Judul & Tanggal Angka */}
+                      <div className="mb-14">
+                        <h2 className="text-[72px] font-bold tracking-tight mb-2 leading-none">{dynamicTitle}</h2>
+                        <p className="text-3xl text-white/90 font-semibold tracking-widest">{shortDate}</p>
+                      </div>
+
+                      {/* Baris 3: Data Lari (Grid, Rata Kiri, Flex Baseline agar 'km' tidak turun) */}
+                      <div className="grid grid-cols-3 gap-8 w-full max-w-[950px]">
+                        <div className="flex flex-col text-left">
+                          <span className="text-[22px] font-bold uppercase tracking-widest text-[#ccff00] mb-2" style={{ textShadow: '0px 2px 8px rgba(0,0,0,0.8)' }}>Jarak</span>
+                          <div className="flex items-baseline gap-2 whitespace-nowrap">
+                            <span className="text-[80px] font-bold leading-none tracking-tight">{activity.distance.toFixed(2)}</span>
+                            <span className="text-3xl font-bold text-white/90">km</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col text-left">
+                          <span className="text-[22px] font-bold uppercase tracking-widest text-[#ccff00] mb-2" style={{ textShadow: '0px 2px 8px rgba(0,0,0,0.8)' }}>Pace</span>
+                          <div className="flex items-baseline gap-2 whitespace-nowrap">
+                            <span className="text-[80px] font-bold leading-none tracking-tight">{activity.avgPace}</span>
+                            <span className="text-3xl font-bold text-white/90">/km</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col text-left">
+                          <span className="text-[22px] font-bold uppercase tracking-widest text-[#ccff00] mb-2" style={{ textShadow: '0px 2px 8px rgba(0,0,0,0.8)' }}>Waktu</span>
+                          <span className="text-[80px] font-bold leading-none tracking-tight">{formatTimeStr(activity.movingTime)}</span>
+                        </div>
+                      </div>
+                      
+                    </div>
+                  )}
+
                 </div>
               </div>
             </div>
 
-            <button onClick={() => setActiveSticker((prev) => (prev < 7 ? prev + 1 : 0))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90 shrink-0">
+            <button onClick={() => setActiveSticker((prev) => (prev < 8 ? prev + 1 : 0))} className="w-10 h-10 flex items-center justify-center text-white/70 active:scale-90 shrink-0">
               <ChevronRight size={32} />
             </button>
           </div>
 
           <div className="flex justify-center gap-2 mb-6">
-            {[0,1,2,3,4,5,6,7].map(idx => (
+            {[0,1,2,3,4,5,6,7,8].map(idx => (
               <div key={idx} className={`w-2 h-2 rounded-full ${activeSticker === idx ? 'bg-[#ccff00] w-6' : 'bg-slate-700'} transition-all`}></div>
             ))}
           </div>

@@ -19,9 +19,12 @@ const MobileProfile = () => {
   useEffect(() => {
     const savedProfile = JSON.parse(localStorage.getItem('userProfile'));
     if (savedProfile) { setFormData(prev => ({ ...prev, ...savedProfile })); }
+    
+    // Memuat foto profil dari localStorage
+    const savedPhoto = localStorage.getItem('userProfilePhoto');
+    if (savedPhoto) { setPhoto(savedPhoto); }
   }, []);
 
-  // Penyesuaian tema gelap untuk kategori BMI
   const calculateBMI = (weight, height) => {
     if (!weight || !height) return { score: 0, category: '-', color: 'text-slate-500', bg: 'bg-slate-900', border: 'border-slate-800' };
     const heightInMeters = height / 100;
@@ -45,7 +48,21 @@ const MobileProfile = () => {
   const idealWeightMax = (24.9 * (h/100) * (h/100)).toFixed(1);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-  const handlePhotoChange = (e) => { if (e.target.files[0]) setPhoto(URL.createObjectURL(e.target.files[0])); };
+  
+  // LOGIKA BARU: Mengubah gambar menjadi format Base64 dan menyimpannya ke memori lokal
+  const handlePhotoChange = (e) => { 
+    const file = e.target.files[0];
+    if (file) { 
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result;
+        setPhoto(base64String);
+        localStorage.setItem('userProfilePhoto', base64String);
+      };
+      reader.readAsDataURL(file);
+    } 
+  };
+  
   const handleSave = (e) => { e.preventDefault(); localStorage.setItem('userProfile', JSON.stringify(formData)); alert('Profil dan preferensi berhasil disimpan!'); };
   const handleExportData = () => { alert('Laporan akan diunduh dalam format CSV/Excel (Simulasi).'); };
   const handleLogout = async () => { if(window.confirm('Yakin ingin keluar?')) { navigate('/login'); } };
