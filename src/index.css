@@ -7,8 +7,10 @@
 @layer base {
   :root {
     /* Latar Belakang & Teks (Monokrom) */
-    --background: 0 0% 98%; /* Putih Abu terang */
-    --foreground: 222 47% 11%; /* Midnight Black */
+    --background: 0 0% 98%;
+    /* Putih Abu terang */
+    --foreground: 222 47% 11%;
+    /* Midnight Black */
 
     /* Area Kartu UI */
     --card: 0 0% 100%;
@@ -19,8 +21,10 @@
     --primary-foreground: 0 0% 100%;
 
     /* Aksen Utama: Volt (Kuning Neon) menggantikan Ungu */
-    --accent: 65 100% 50%; /* Hex: #ccff00 */
-    --accent-foreground: 222 47% 11%; /* Teks gelap di atas Neon */
+    --accent: 65 100% 50%;
+    /* Hex: #ccff00 */
+    --accent-foreground: 222 47% 11%;
+    /* Teks gelap di atas Neon */
 
     /* Warna Destruktif */
     --destructive: 0 84.2% 60.2%;

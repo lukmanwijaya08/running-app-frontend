@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Import Mobile
@@ -19,6 +20,24 @@ import MobileChallenges from './pages/mobile/MobileChallenges';
 import MobileRecordRun from './pages/mobile/MobileRecordRun'; 
 
 function App() {
+  
+  // EFEK PENAHAN SPLASH SCREEN
+  useEffect(() => {
+    const splashScreen = document.getElementById('splash-screen');
+    
+    if (splashScreen) {
+      // Tahan splash screen selama 3 detik agar animasi sempat dinikmati
+      setTimeout(() => {
+        splashScreen.style.opacity = '0'; // Memulai efek fade out
+        
+        // Hapus elemen dari HTML secara permanen setelah fade out selesai
+        setTimeout(() => {
+          splashScreen.remove();
+        }, 1000); // 1000ms mengikuti durasi 'transition: opacity 1s' di CSS
+      }, 3000); 
+    }
+  }, []);
+
   return (
     <Router>
       <Routes>

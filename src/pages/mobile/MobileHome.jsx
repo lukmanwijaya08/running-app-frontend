@@ -41,7 +41,6 @@ const MobileHome = () => {
   const [recentActivities, setRecentActivities] = useState([]);
   const [locationName, setLocationName] = useState("Mencari lokasi...");
   
-  // STATE BARU untuk Foto Profil
   const [profilePhoto, setProfilePhoto] = useState("https://i.pravatar.cc/150?img=11");
   const [activeTooltip, setActiveTooltip] = useState(null);
   
@@ -114,7 +113,6 @@ const MobileHome = () => {
       });
     }
 
-    // Mengambil Foto Profil
     const savedPhoto = localStorage.getItem('userProfilePhoto');
     if (savedPhoto) setProfilePhoto(savedPhoto);
 
@@ -242,52 +240,52 @@ const MobileHome = () => {
       ) : (
         <div className="animate-in fade-in duration-500">
           
-          {/* 1. CAROUSEL MINGGUAN UTAMA */}
-          <div className="flex overflow-x-auto gap-4 pb-8 snap-x snap-mandatory hide-scrollbar -mx-5 px-5">
+          {/* CAROUSEL MINGGUAN UTAMA */}
+          <div className="flex overflow-x-auto gap-4 pb-8 snap-x snap-mandatory hide-scrollbar -mx-5 px-5 relative pt-12 -mt-12">
 
-            {/* KARTU 1: TARGET MINGGUAN */}
-            <div className="min-w-[85%] h-[200px] snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between p-4 border border-slate-700/50">
-              <img src="https://images.unsplash.com/photo-1571008887538-b36bb32f4571?auto=format&fit=crop&q=80&w=800" alt="Running Runner" className="absolute inset-0 w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/30 to-transparent"></div>
+            {/* KARTU 1: TARGET MINGGUAN (DESAIN FULL-BLEED EDITORIAL) */}
+            <div className="min-w-[85%] h-[200px] mt-8 snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden bg-slate-900 border border-slate-700/50">
               
-              <div className="relative z-10 flex justify-start">
-                 <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow-sm">
-                    <Target size={12} className="text-[#ccff00]" />
-                    <span className="text-[9px] font-bold text-white uppercase tracking-wider">Target Mingguan</span>
-                 </div>
-              </div>
+              {/* Gambar Background Penuh (Full Bleed) */}
+              {/* Anda bisa mengganti URL di bawah ini dengan foto lari milik Anda sendiri */}
+              <img src="https://images.unsplash.com/photo-1571008887538-b36bb32f4571?auto=format&fit=crop&q=80&w=800" alt="Runner Focus" className="absolute inset-0 w-full h-full object-cover object-right" />
+              
+              {/* Gradasi Halus: Gelap di kiri untuk teks, transparan di kanan agar foto terlihat */}
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent"></div>
 
-              <div className="relative z-10 flex-1 flex flex-col justify-center px-2 pointer-events-none">
-                {(userData.weeklyTarget - weeklyStats.distance) > 0 ? (
-                  <>
-                    <p className="text-2xl font-black italic tracking-tighter leading-none text-white drop-shadow-lg">TERUS</p>
-                    <p className="text-2xl font-black italic tracking-tighter leading-none text-[#ccff00] drop-shadow-lg">MELANGKAH.</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-2xl font-black italic tracking-tighter leading-none text-white drop-shadow-lg">TARGET</p>
-                    <p className="text-2xl font-black italic tracking-tighter leading-none text-[#ccff00] drop-shadow-lg">TERCAPAI!</p>
-                  </>
-                )}
-              </div>
-
-              <div className="relative z-20 bg-black/50 backdrop-blur-md border border-white/10 rounded-[1.25rem] p-3 flex flex-col">
-                <div className="flex justify-between items-end mb-2">
-                  <span className="text-xl font-black tracking-tighter text-white leading-none">
-                    {weeklyStats.distance.toFixed(1)} <span className="text-[10px] font-bold text-white/70">/ {userData.weeklyTarget} km</span>
-                  </span>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-white/80">
-                    {(userData.weeklyTarget - weeklyStats.distance) > 0 ? `${(userData.weeklyTarget - weeklyStats.distance).toFixed(1)} km Sisa` : 'Luar Biasa! 🎉'}
-                  </p>
+              {/* LAYER KONTEN TEKS (Kiri) */}
+              <div className="relative z-30 flex flex-col justify-between h-full w-[70%] p-5 pl-6">
+                <div>
+                  <div className="inline-flex px-2.5 py-1 mb-3 rounded-lg bg-slate-800/80 backdrop-blur-md border border-slate-700 items-center gap-1.5 shadow-sm">
+                     <Target size={12} className="text-[#ccff00]" />
+                     <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">Target Mingguan</span>
+                  </div>
+                  
+                  <div className="flex flex-col mb-4">
+                     <span className="text-[26px] font-black tracking-tight leading-none text-white drop-shadow-md">TERUS</span>
+                     <span className="text-[26px] font-black tracking-tight leading-none text-[#ccff00] drop-shadow-md">MELANGKAH.</span>
+                  </div>
                 </div>
-                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#ccff00] rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(204,255,0,0.8)]" style={{ width: `${Math.min((weeklyStats.distance / userData.weeklyTarget) * 100, 100)}%` }}></div>
+
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-end gap-1.5">
+                    <span className="text-3xl font-black tracking-tighter text-white leading-none drop-shadow-md">
+                      {weeklyStats.distance.toFixed(1)}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-300 mb-0.5 drop-shadow-md">/ {userData.weeklyTarget} km</span>
+                  </div>
+                  <div className="h-1.5 w-full max-w-[130px] bg-slate-800 rounded-full overflow-hidden shadow-inner">
+                    <div className="h-full bg-[#ccff00] rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(204,255,0,0.8)]" style={{ width: `${Math.min((weeklyStats.distance / userData.weeklyTarget) * 100, 100)}%` }}></div>
+                  </div>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-300 drop-shadow-md">
+                    {(userData.weeklyTarget - weeklyStats.distance) > 0 ? `${(userData.weeklyTarget - weeklyStats.distance).toFixed(1)} km Sisa` : 'Target Tercapai!'}
+                  </p>
                 </div>
               </div>
             </div>
             
             {/* KARTU 2: KONSISTENSI 7 HARI */}
-            <div className="min-w-[85%] h-[200px] snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between p-4 border border-slate-700/50">
+            <div className="min-w-[85%] h-[200px] mt-8 snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between p-4 border border-slate-700/50">
               <img src="https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&q=80&w=800" alt="Running Shoes" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/30 to-transparent"></div>
               
@@ -339,7 +337,7 @@ const MobileHome = () => {
             </div>
 
             {/* KARTU 3: AKTIVITAS MINGGUAN */}
-            <div className="min-w-[85%] h-[200px] snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between p-4 border border-slate-700/50">
+            <div className="min-w-[85%] h-[200px] mt-8 snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between p-4 border border-slate-700/50">
               <img src="https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&q=80&w=800" alt="Running Track" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent"></div>
               
@@ -371,7 +369,7 @@ const MobileHome = () => {
             </div>
 
             {/* KARTU 4: RUNNING SCORE */}
-            <div className="min-w-[85%] h-[200px] snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between p-4 border border-slate-700/50">
+            <div className="min-w-[85%] h-[200px] mt-8 snap-center shrink-0 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between p-4 border border-slate-700/50">
               <img src="https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&q=80&w=800" alt="Workout" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent"></div>
               

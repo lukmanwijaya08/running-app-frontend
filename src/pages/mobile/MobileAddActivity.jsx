@@ -259,9 +259,20 @@ const MobileAddActivity = () => {
 
           {inputType === 'manual' && (
             <div className="bg-slate-900 p-5 rounded-3xl shadow-lg border border-slate-800 space-y-5">
-              <div className="space-y-1.5">
+              
+              {/* PERBAIKAN: Input Tanggal & Waktu Mulai */}
+              <div className="space-y-1.5 w-full">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-[#ccff00] ml-1 flex items-center gap-1.5"><Calendar size={14}/> Tanggal & Waktu Mulai</label>
-                <input type="datetime-local" name="date" value={formData.date} onChange={handleChange} className="w-full bg-slate-950 px-4 py-3.5 rounded-2xl outline-none font-bold text-sm text-white border border-slate-800 focus:ring-1 focus:ring-[#ccff00]" required={inputType === 'manual'} />
+                <input 
+                  type="datetime-local" 
+                  name="date" 
+                  value={formData.date} 
+                  onChange={handleChange} 
+                  /* Ditambahkan max-w-full, box-border, w-full dan disesuaikan px-nya untuk mencegah overflow */
+                  className="w-full max-w-full box-border block bg-slate-950 px-3 py-3.5 rounded-2xl outline-none font-bold text-sm text-white border border-slate-800 focus:ring-1 focus:ring-[#ccff00]" 
+                  style={{ WebkitAppearance: 'none' }} /* Kadang diperlukan untuk iOS Safari */
+                  required={inputType === 'manual'} 
+                />
               </div>
               
               <div className="space-y-1.5">
